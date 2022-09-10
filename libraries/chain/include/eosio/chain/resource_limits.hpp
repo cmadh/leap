@@ -9,7 +9,7 @@
 
 namespace eosio { namespace chain {
 
-   class deep_mind_handler;
+   class deep_mind_handler_base;
 
    namespace resource_limits {
    namespace impl {
@@ -61,7 +61,7 @@ namespace eosio { namespace chain {
    class resource_limits_manager {
       public:
 
-         explicit resource_limits_manager(chainbase::database& db, std::function<deep_mind_handler*()> get_deep_mind_logger)
+         explicit resource_limits_manager(chainbase::database& db, std::function<deep_mind_handler_base*()> get_deep_mind_logger)
          :_db(db),_get_deep_mind_logger(get_deep_mind_logger)
          {
          }
@@ -109,7 +109,7 @@ namespace eosio { namespace chain {
 
       private:
          chainbase::database&         _db;
-         std::function<deep_mind_handler*()> _get_deep_mind_logger;
+         std::function<deep_mind_handler_base*()> _get_deep_mind_logger;
    };
 } } } /// eosio::chain
 
