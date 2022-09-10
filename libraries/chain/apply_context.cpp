@@ -577,7 +577,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       }
 
       if (auto dm_logger = control.get_deep_mind_logger()) {
-         dm_logger->on_cancel_deferred(deep_mind_handler::operation_qualifier::modify, *ptr);
+         dm_logger->on_cancel_deferred(deep_mind_handler_base::operation_qualifier::modify, *ptr);
       }
 
       // Use remove and create rather than modify because mutating the trx_id field in a modifier is unsafe.
@@ -631,7 +631,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {
       if (auto dm_logger = control.get_deep_mind_logger()) {
-         dm_logger->on_cancel_deferred(deep_mind_handler::operation_qualifier::none, *gto);
+         dm_logger->on_cancel_deferred(deep_mind_handler_base::operation_qualifier::none, *gto);
          dm_logger->on_ram_trace(RAM_EVENT_ID("${id}", ("id", gto->id)), "deferred_trx", "cancel", "deferred_trx_cancel");
       }
 

@@ -209,7 +209,7 @@ struct pending_state {
 
 struct controller_impl {
 
-   // LLVM sets the new handler, we need to reset this to throw a bad_alloc exception so we can possibly exit cleanly
+   // LLVM sets the new handler, we need to reset this to throw a bad_alloc exception, so we can possibly exit cleanly
    // and not just abort.
    struct reset_new_handler {
       reset_new_handler() { std::set_new_handler([](){ throw std::bad_alloc(); }); }
@@ -237,7 +237,7 @@ struct controller_impl {
    uint32_t                        snapshot_head_block = 0;
    named_thread_pool               thread_pool;
    platform_timer                  timer;
-   deep_mind_handler*              deep_mind_logger = nullptr;
+   deep_mind_handler_base*         deep_mind_logger = nullptr;
    bool                            okay_to_print_integrity_hash_on_stop = false;
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
    vm::wasm_allocator               wasm_alloc;
@@ -2581,7 +2581,7 @@ struct controller_impl {
       return trx;
    }
 
-   inline deep_mind_handler* get_deep_mind_logger() const {
+   inline deep_mind_handler_base* get_deep_mind_logger() const {
       return deep_mind_logger;
    }
 
@@ -3443,11 +3443,11 @@ bool controller::all_subjective_mitigations_disabled()const {
    return my->conf.disable_all_subjective_mitigations;
 }
 
-deep_mind_handler* controller::get_deep_mind_logger()const {
+deep_mind_handler_base* controller::get_deep_mind_logger()const {
    return my->get_deep_mind_logger();
 }
 
-void controller::enable_deep_mind(deep_mind_handler* logger) {
+void controller::enable_deep_mind(deep_mind_handler_base* logger) {
    EOS_ASSERT( logger != nullptr, misc_exception, "Invalid logger passed into enable_deep_mind, must be set" );
    my->deep_mind_logger = logger;
 }
