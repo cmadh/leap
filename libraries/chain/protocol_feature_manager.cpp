@@ -568,7 +568,7 @@ Enables new `get_block_num` intrinsic which returns the current block number.
 
    protocol_feature_manager::protocol_feature_manager(
       protocol_feature_set&& pfs,
-      std::function<deep_mind_handler*()> get_deep_mind_logger
+      std::function<deep_mind_handler_base*()> get_deep_mind_logger
    ):_protocol_feature_set( std::move(pfs) ), _get_deep_mind_logger(get_deep_mind_logger)
    {
       _builtin_protocol_features.resize( _protocol_feature_set._recognized_builtin_protocol_features.size() );
