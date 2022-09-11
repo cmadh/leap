@@ -12,21 +12,16 @@ set(NET_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../dotNetSample")
 # Add swig flags here
 set(CMAKE_SWIG_FLAGS "")
 
-
 set_property(SOURCE nodeos_swig.i PROPERTY CPLUSPLUS ON)
 set_property(SOURCE swig_logger_base.i PROPERTY CPLUSPLUS ON)
-#set_source_files_properties(nodeos_swig.i PROPERTIES SWIG_FLAGS "-includeall")
-#set_source_files_properties(deep_mind_swig_handler.i PROPERTIES SWIG_FLAGS "-includeall")
 
 swig_add_library(${NODE_EXECUTABLE_NAME}_swig
         TYPE STATIC
         LANGUAGE CSharp
-        SOURCES nodeos_swig.cpp nodeos_swig.i swig_logger_base.hpp swig_logger_base.i #nodeos_swig.cpp deep_mind_swig_handler.cpp #deep_mind_swig_handler.i deep_mind_swig_handler.cpp
+        SOURCES nodeos_swig.cpp nodeos_swig.i
         OUTPUT_DIR ${NET_PROJECT_DIR}
         OUTFILE_DIR ${NET_PROJECT_DIR}
         )
-
-#set_property(TARGET ${NODE_EXECUTABLE_NAME}_swig PROPERTY SWIG_USE_TARGET_INCLUDE_DIRECTORIES TRUE)
 
 add_library(${NODE_EXECUTABLE_NAME}_lib
         STATIC
@@ -35,11 +30,9 @@ add_library(${NODE_EXECUTABLE_NAME}_lib
 
 set_target_properties( ${NODE_EXECUTABLE_NAME}_swig
         PROPERTIES
-        # These copy animal.dll on Windows to .Net project directory
         RUNTIME_OUTPUT_DIRECTORY_RELEASE ${NET_PROJECT_DIR}
         RUNTIME_OUTPUT_DIRECTORY_DEBUG ${NET_PROJECT_DIR}
 
-        # This copies animal.so on Linux to .Net project directory
         LIBRARY_OUTPUT_DIRECTORY ${NET_PROJECT_DIR}
 
         # Set address of C++ headers
