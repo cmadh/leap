@@ -5,7 +5,7 @@
 
 class NodeosSwig {
 public:
-    int Start(int argc, char** argv, swig_logger_base swig_logger);
+    int Start(int argc, std::vector<std::string> argv, swig_logger_base *swig_logger);
 };
 
 #endif //LEAP_NODEOS_SWIG_H

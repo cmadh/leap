@@ -1,10 +1,20 @@
 #include <string>
 
+struct swig_data_wrapper{
+    uint8_t *data;
+    int32_t size;
+
+    swig_data_wrapper(const char *data, size_t size) {
+        this->data = (uint8_t*)data;
+        this->size = size;
+    }
+};
+
 class swig_logger_base {
 public:
     virtual ~swig_logger_base() {}
 
-    virtual void on_deep_mind_version(const std::string name, const uint major, const uint minor) {
+    virtual void on_deep_mind_version(std::string name, uint32_t major, uint32_t minor) {
 
     }
 
@@ -12,7 +22,7 @@ public:
 
     }
 
-    virtual void on_abidump_abi(uint64_t name, uint8_t abi_data[]) {
+    virtual void on_abidump_abi(uint64_t name, swig_data_wrapper abi_data) {
 
     }
 
@@ -24,23 +34,23 @@ public:
 
     }
 
-    virtual void on_accepted_block(uint32_t num, uint8_t blk[]) {
+    virtual void on_accepted_block(uint32_t num, swig_data_wrapper blk) {
 
     }
 
-    virtual void on_switch_forks(uint8_t from_id[32], uint8_t to_id[32]) {
+    virtual void on_switch_forks(swig_data_wrapper from_id, swig_data_wrapper to_id) {
 
     }
 
-    virtual void on_error(uint8_t id[32], uint8_t trx[]) {
+    virtual void on_error(swig_data_wrapper id, swig_data_wrapper trx) {
 
     }
 
-    virtual void on_onblock(uint8_t id[32], uint8_t trx[]) {
+    virtual void on_onblock(swig_data_wrapper id, swig_data_wrapper trx) {
 
     }
 
-    virtual void on_applied_transaction(uint32_t i, uint8_t traces[]) {
+    virtual void on_applied_transaction(uint32_t block_num, swig_data_wrapper traces) {
 
     }
 
@@ -64,21 +74,21 @@ public:
 
     }
 
-    virtual void on_cancel_deferred(__uint8_t qual, uint32_t action_id, uint64_t sender, uint8_t sender_id[], uint64_t payer,
-                            uint32_t published, uint32_t delay, uint32_t expiration, uint8_t trx_id[],
-                            uint8_t trx[]) {
+    virtual void on_cancel_deferred(uint8_t qual, uint32_t action_id, uint64_t sender, swig_data_wrapper sender_id, uint64_t payer,
+                            uint32_t published, uint32_t delay, uint32_t expiration, swig_data_wrapper trx_id,
+                                    swig_data_wrapper trx) {
 
     }
 
-    virtual void on_send_deferred(__uint8_t qual, uint32_t action_id, uint64_t sender, uint8_t sender_id[], uint64_t payer,
-                          uint32_t published, uint32_t delay, uint32_t expiration, uint8_t trx_id[],
-                          uint8_t trx[]) {
+    virtual void on_send_deferred(uint8_t qual, uint32_t action_id, uint64_t sender, swig_data_wrapper sender_id, uint64_t payer,
+                          uint32_t published, uint32_t delay, uint32_t expiration, swig_data_wrapper trx_id,
+                          swig_data_wrapper trx) {
 
     }
 
-    virtual void on_create_deferred(__uint8_t qual, uint32_t action_id, uint64_t sender, uint8_t sender_id[], uint64_t payer,
-                            uint32_t published, uint32_t delay, uint32_t expiration, uint8_t trx_id[],
-                            uint8_t trx[]) {
+    virtual void on_create_deferred(uint8_t qual, uint32_t action_id, uint64_t sender, swig_data_wrapper sender_id, uint64_t payer,
+                            uint32_t published, uint32_t delay, uint32_t expiration, swig_data_wrapper trx_id,
+                            swig_data_wrapper trx) {
 
     }
 
@@ -95,35 +105,35 @@ public:
     }
 
     virtual void on_db_store_i64(uint32_t action_id, uint64_t payer, uint64_t table_code, uint64_t scope, uint64_t table_name,
-                         uint64_t primkey, uint8_t ndata[]) {
+                         uint64_t primkey, swig_data_wrapper ndata) {
 
     }
 
     virtual void on_db_update_i64(uint32_t action_id, uint64_t payer, uint64_t table_code, uint64_t scope, uint64_t table_name,
-                          uint64_t primkey, uint8_t odata[], uint8_t ndata[]) {
+                          uint64_t primkey, swig_data_wrapper odata, swig_data_wrapper ndata) {
 
     }
 
     virtual void on_db_remove_i64(uint32_t action_id, uint64_t payer, uint64_t table_code, uint64_t scope, uint64_t table_name,
-                     uint64_t primkey, uint8_t odata[]) {
+                     uint64_t primkey, swig_data_wrapper odata) {
 
     }
 
-    virtual void on_ram_event(uint32_t action_id, std::basic_string<char> event_id, std::basic_string<char> family,
-                      std::basic_string<char> operation, std::basic_string<char> legacy_tag, uint64_t payer,
+    virtual void on_ram_event(uint32_t action_id, std::string event_id, std::string family,
+                      std::string operation, std::string legacy_tag, uint64_t payer,
                       uint64_t new_usage, int64_t delta) {
 
     }
 
-    virtual void on_create_permission(uint32_t action_id, int64_t permission_id, uint8_t data[]) {
+    virtual void on_create_permission(uint32_t action_id, int64_t permission_id, swig_data_wrapper data) {
 
     }
 
-    virtual void on_modify_permission(uint32_t action_id, int64_t permission_id, uint8_t opdata[], uint8_t npdata[]) {
+    virtual void on_modify_permission(uint32_t action_id, int64_t permission_id, swig_data_wrapper opdata, swig_data_wrapper npdata) {
 
     }
 
-    virtual void on_remove_permission(uint32_t action_id, int64_t permission_id, uint8_t data[]) {
+    virtual void on_remove_permission(uint32_t action_id, int64_t permission_id, swig_data_wrapper data) {
 
     }
 };

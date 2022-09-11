@@ -109,10 +109,10 @@ enum return_codes {
     NODE_MANAGEMENT_SUCCESS = 5
 };
 
-int NodeosSwig::Start(int argc, char** argv, swig_logger_base swig_logger)
+int NodeosSwig::Start(int argc, std::vector<std::string> argv, swig_logger_base *swig_logger)
 {
     try {
-        _deep_mind_swig_log = deep_mind_swig_handler(swig_logger);
+        _deep_mind_swig_log = deep_mind_swig_handler(*swig_logger);
 
         uint32_t short_hash = 0;
         fc::from_hex(eosio::version::version_hash(), (char*)&short_hash, sizeof(short_hash));
@@ -128,7 +128,7 @@ int NodeosSwig::Start(int argc, char** argv, swig_logger_base swig_logger)
                                           .default_unix_socket_path = "",
                                           .default_http_port = 8888
                                   });
-        if(!app().initialize<chain_plugin, net_plugin, producer_plugin, resource_monitor_plugin>(argc, argv)) {
+        if(!app().initialize<chain_plugin, net_plugin, producer_plugin, resource_monitor_plugin>(argc, (char**)argv.data())) {
             const auto& opts = app().get_options();
             if( opts.count("help") || opts.count("version") || opts.count("full-version") || opts.count("print-default-config") ) {
                 return SUCCESS;
