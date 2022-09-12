@@ -109,10 +109,22 @@ enum return_codes {
     NODE_MANAGEMENT_SUCCESS = 5
 };
 
-int NodeosSwig::Start(int argc, std::vector<std::string> argv, swig_logger_base *swig_logger)
+int NodeosSwig::Start(int argc, std::vector<std::string> args, swig_logger_base *swig_logger)
 {
     try {
-        _deep_mind_swig_log = deep_mind_swig_handler(*swig_logger);
+
+        ilog("ARGS:");
+        for(auto arg_it = args.begin(); arg_it != args.end(); arg_it++){
+            ilog(*arg_it);
+        }
+
+        std::vector<char*> cstrings;
+        cstrings.reserve(args.size());
+
+        for(auto& s: args)
+            cstrings.push_back(&s[0]);
+
+        _deep_mind_swig_log._swig_logger = swig_logger;
 
         uint32_t short_hash = 0;
         fc::from_hex(eosio::version::version_hash(), (char*)&short_hash, sizeof(short_hash));
@@ -122,13 +134,15 @@ int NodeosSwig::Start(int argc, std::vector<std::string> argv, swig_logger_base 
         app().set_full_version_string(eosio::version::version_full());
 
         auto root = fc::app_path();
+        ilog(root.string());
+        ilog(root.generic_string());
         app().set_default_data_dir(root / "eosio" / nodeos::config::node_executable_name / "data" );
         app().set_default_config_dir(root / "eosio" / nodeos::config::node_executable_name / "config" );
         http_plugin::set_defaults({
                                           .default_unix_socket_path = "",
                                           .default_http_port = 8888
                                   });
-        if(!app().initialize<chain_plugin, net_plugin, producer_plugin, resource_monitor_plugin>(argc, (char**)argv.data())) {
+        if(!app().initialize<chain_plugin, net_plugin, producer_plugin, resource_monitor_plugin>(cstrings.size(), cstrings.data())) {
             const auto& opts = app().get_options();
             if( opts.count("help") || opts.count("version") || opts.count("full-version") || opts.count("print-default-config") ) {
                 return SUCCESS;
@@ -143,8 +157,9 @@ int NodeosSwig::Start(int argc, std::vector<std::string> argv, swig_logger_base 
         }
         if (auto chain_plug = app().find_plugin<chain_plugin>()) {
             chain_plug->chain().enable_deep_mind(&_deep_mind_swig_log);
+            ilog("enabled swig deep-mind");
         } else {
-            elog("chain_plugin failed to initialize");
+            elog("failed to enable deep_mind");
             return INITIALIZE_FAIL;
         }
         initialize_logging();

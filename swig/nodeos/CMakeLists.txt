@@ -7,7 +7,7 @@ include(${SWIG_USE_FILE})
 
 
 # Set .Net project directory
-set(NET_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../dotNetSample")
+set(NET_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../NodeosSwigSharp")
 
 # Add swig flags here
 set(CMAKE_SWIG_FLAGS "")
@@ -16,15 +16,15 @@ set_property(SOURCE nodeos_swig.i PROPERTY CPLUSPLUS ON)
 set_property(SOURCE swig_logger_base.i PROPERTY CPLUSPLUS ON)
 
 swig_add_library(${NODE_EXECUTABLE_NAME}_swig
-        TYPE STATIC
+        TYPE SHARED
         LANGUAGE CSharp
-        SOURCES nodeos_swig.cpp nodeos_swig.i
+        SOURCES nodeos_swig.cpp nodeos_swig.i deep_mind_swig_handler.cpp
         OUTPUT_DIR ${NET_PROJECT_DIR}
         OUTFILE_DIR ${NET_PROJECT_DIR}
         )
 
 add_library(${NODE_EXECUTABLE_NAME}_lib
-        STATIC
+        SHARED
         nodeos_swig.cpp deep_mind_swig_handler.cpp
         )
 
@@ -96,9 +96,10 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}_lib
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin eosio_chain
         PRIVATE eosio_chain_wrap fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
-include(additionalPlugins)
+#include(additionalPlugins)
 
 #copy_bin( ${NODE_EXECUTABLE_NAME} )
-#install( TARGETS
-#   ${NODE_EXECUTABLE_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT base
-#)
+#copy_bin( ${NODE_EXECUTABLE_NAME} )
+install( TARGETS
+        ${NODE_EXECUTABLE_NAME}_swig DESTINATION lib
+        )
