@@ -90,3 +90,4 @@ var/lib/node_*
 
 node_modules
 package-lock.json
+cmake-build-debug-wsl-clang/*
