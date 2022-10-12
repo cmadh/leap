@@ -52,6 +52,8 @@ namespace eosio::chain {
 
     void deep_mind_swig_handler::on_startup(chainbase::database& db, uint32_t head_block_num)
     {
+        if(new_schedule)
+            ilog("new schedule");
         string name = "leap";
         uint major = 13;
         uint minor = 0;
@@ -97,7 +99,7 @@ namespace eosio::chain {
 
     void deep_mind_swig_handler::on_switch_forks(const block_id_type& old_head, const block_id_type& new_head)
     {
-        _swig_logger->on_switch_forks(swig_data_wrapper(old_head.data(), 32), swig_data_wrapper(new_head.data(), 32));
+         _swig_logger->on_switch_forks(swig_data_wrapper(old_head.data(), 32), swig_data_wrapper(new_head.data(), 32));
         /*fc_dlog(_logger, "SWITCH_FORK ${from_id} ${to_id}",
                 ("from_id", old_head)
                         ("to_id", new_head)
@@ -150,6 +152,7 @@ namespace eosio::chain {
         }
 
         _swig_logger->on_applied_transaction(block_num, swig_data_wrapper(packed_trace.data(), packed_trace.size()));
+
         /*fc_dlog(_logger, "APPLIED_TRANSACTION ${block} ${traces}",
                 ("block", block_num)
                         ("traces", fc::to_hex(packed_trace))
@@ -188,7 +191,7 @@ namespace eosio::chain {
 
     void deep_mind_swig_handler::on_input_action()
     {
-        _swig_logger->on_input_action(_action_id);
+            _swig_logger->on_input_action(_action_id);
         /*fc_dlog(_logger, "CREATION_OP ROOT ${action_id}",
                 ("action_id", _action_id)
         );*/
@@ -199,14 +202,14 @@ namespace eosio::chain {
     }
     void deep_mind_swig_handler::on_require_recipient()
     {
-        _swig_logger->on_require_recipient(_action_id);
+            _swig_logger->on_require_recipient(_action_id);
         /*fc_dlog(_logger, "CREATION_OP NOTIFY ${action_id}",
                 ("action_id", _action_id)
         );*/
     }
     void deep_mind_swig_handler::on_send_inline()
     {
-        _swig_logger->on_send_inline(_action_id);
+            _swig_logger->on_send_inline(_action_id);
         /*fc_dlog(_logger, "CREATION_OP INLINE ${action_id}",
                 ("action_id", _action_id)
         );*/
@@ -220,11 +223,12 @@ namespace eosio::chain {
     }
     void deep_mind_swig_handler::on_cancel_deferred(operation_qualifier qual, const generated_transaction_object& gto)
     {
-        _swig_logger->on_cancel_deferred(uint8_t(qual), _action_id, gto.sender.to_uint64_t(), swig_data_wrapper(
-                                                reinterpret_cast<const char *>(gto.sender_id), 16),
-                                        gto.payer.to_uint64_t(), gto.published.sec_since_epoch(),
-                                        gto.delay_until.sec_since_epoch(), gto.expiration.sec_since_epoch(),
-                                        swig_data_wrapper(gto.trx_id.data(), 32), swig_data_wrapper(gto.packed_trx.data(), gto.packed_trx.size()));
+        std::vector<char> sender_id = std::vector<char>(16);
+        memcpy(&sender_id[0], &gto.sender_id, 16);
+        _swig_logger->on_cancel_deferred(uint8_t(qual), _action_id, gto.sender.to_uint64_t(), swig_data_wrapper(&sender_id[0], 16),
+                                    gto.payer.to_uint64_t(), gto.published.sec_since_epoch(),
+                                    gto.delay_until.sec_since_epoch(), gto.expiration.sec_since_epoch(),
+                                    swig_data_wrapper(gto.trx_id.data(), 32), swig_data_wrapper(gto.packed_trx.data(), gto.packed_trx.size()));
 
         /*fc_dlog(_logger, "DTRX_OP ${qual}CANCEL ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                 ("qual", prefix(qual))
@@ -241,11 +245,12 @@ namespace eosio::chain {
     }
     void deep_mind_swig_handler::on_send_deferred(operation_qualifier qual, const generated_transaction_object& gto)
     {
-        _swig_logger->on_send_deferred(uint8_t(qual), _action_id, gto.sender.to_uint64_t(), swig_data_wrapper(
-                                              reinterpret_cast<const char *>(gto.sender_id), 16),
-                                      gto.payer.to_uint64_t(), gto.published.sec_since_epoch(),
-                                      gto.delay_until.sec_since_epoch(), gto.expiration.sec_since_epoch(),
-                                      swig_data_wrapper(gto.trx_id.data(), 32), swig_data_wrapper(gto.packed_trx.data(), gto.packed_trx.size()));
+        std::vector<char> sender_id = std::vector<char>(16);
+        memcpy(&sender_id[0], &gto.sender_id, 16);
+        _swig_logger->on_send_deferred(uint8_t(qual), _action_id, gto.sender.to_uint64_t(), swig_data_wrapper(&sender_id[0], 16),
+                                  gto.payer.to_uint64_t(), gto.published.sec_since_epoch(),
+                                  gto.delay_until.sec_since_epoch(), gto.expiration.sec_since_epoch(),
+                                  swig_data_wrapper(gto.trx_id.data(), 32), swig_data_wrapper(gto.packed_trx.data(), gto.packed_trx.size()));
 
         /*fc_dlog(_logger, "DTRX_OP ${qual}CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                 ("qual", prefix(qual))
@@ -263,12 +268,12 @@ namespace eosio::chain {
     void deep_mind_swig_handler::on_create_deferred(operation_qualifier qual, const generated_transaction_object& gto, const packed_transaction& packed_trx)
     {
         auto packed_signed_trx = fc::raw::pack(packed_trx.get_signed_transaction());
-
-        _swig_logger->on_create_deferred(uint8_t(qual), _action_id, gto.sender.to_uint64_t(), swig_data_wrapper(
-                                                reinterpret_cast<const char *>(gto.sender_id), 16),
+        std::vector<char> sender_id = std::vector<char>(16);
+        memcpy(&sender_id[0], &gto.sender_id, 16);
+        _swig_logger->on_create_deferred(uint8_t(qual), _action_id, gto.sender.to_uint64_t(), swig_data_wrapper(&sender_id[0], 16),
                                         gto.payer.to_uint64_t(), gto.published.sec_since_epoch(),
                                         gto.delay_until.sec_since_epoch(), gto.expiration.sec_since_epoch(),
-                                        swig_data_wrapper(gto.trx_id.data(), 32), swig_data_wrapper(gto.packed_trx.data(), gto.packed_trx.size()));
+                                        swig_data_wrapper(gto.trx_id.data(), 32), swig_data_wrapper(packed_signed_trx.data(), packed_signed_trx.size()));
 
         /*fc_dlog(_logger, "DTRX_OP ${qual}CREATE ${action_id} ${sender} ${sender_id} ${payer} ${published} ${delay} ${expiration} ${trx_id} ${trx}",
                 ("qual", prefix(qual))
@@ -402,7 +407,7 @@ namespace eosio::chain {
     void deep_mind_swig_handler::on_ram_event(account_name account, uint64_t new_usage, int64_t delta)
     {
         _swig_logger->on_ram_event(_action_id, std::string(_ram_trace.event_id), std::string(_ram_trace.family), std::string(_ram_trace.operation),
-                                  std::string(_ram_trace.legacy_tag), account.to_uint64_t(), new_usage, delta);
+                              std::string(_ram_trace.legacy_tag), account.to_uint64_t(), new_usage, delta);
         /*fc_dlog(_logger, "RAM_OP ${action_id} ${event_id} ${family} ${operation} ${legacy_tag} ${payer} ${new_usage} ${delta}",
                 ("action_id", _action_id)
                         ("event_id", _ram_trace.event_id)
@@ -445,6 +450,7 @@ namespace eosio::chain {
     void deep_mind_swig_handler::on_remove_permission(const permission_object& permission)
     {
         auto praw = fc::raw::pack(permission);
+
         _swig_logger->on_remove_permission(_action_id, permission.id._id, swig_data_wrapper(praw.data(), praw.size()));
         /*fc_dlog(_logger, "PERM_OP REM ${action_id} ${permission_id} ${data}",
                 ("action_id", _action_id)

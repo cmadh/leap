@@ -3498,6 +3498,26 @@ SWIGEXPORT void SWIGSTDCALL CSharp_delete_StringVector(void * jarg1) {
 }
 
 
+SWIGEXPORT void SWIGSTDCALL CSharp_NodeosSwig_StartNodeos(void * jarg1, int jarg2, void * jarg3, void * jarg4) {
+  NodeosSwig *arg1 = (NodeosSwig *) 0 ;
+  int arg2 ;
+  std::vector< std::string > arg3 ;
+  swig_logger_base *arg4 = (swig_logger_base *) 0 ;
+  std::vector< std::string > *argp3 ;
+  
+  arg1 = (NodeosSwig *)jarg1; 
+  arg2 = (int)jarg2; 
+  argp3 = (std::vector< std::string > *)jarg3; 
+  if (!argp3) {
+    SWIG_CSharpSetPendingExceptionArgument(SWIG_CSharpArgumentNullException, "Attempt to dereference null std::vector< std::string >", 0);
+    return ;
+  }
+  arg3 = *argp3; 
+  arg4 = (swig_logger_base *)jarg4; 
+  (arg1)->StartNodeos(arg2,arg3,arg4);
+}
+
+
 SWIGEXPORT int SWIGSTDCALL CSharp_NodeosSwig_Start(void * jarg1, int jarg2, void * jarg3, void * jarg4) {
   int jresult ;
   NodeosSwig *arg1 = (NodeosSwig *) 0 ;

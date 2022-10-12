@@ -600,6 +600,9 @@ class NodeosSwigModulePINVOKE {
   [global::System.Runtime.InteropServices.DllImport("nodeos_swig", EntryPoint="CSharp_delete_StringVector")]
   public static extern void delete_StringVector(global::System.Runtime.InteropServices.HandleRef jarg1);
 
+  [global::System.Runtime.InteropServices.DllImport("nodeos_swig", EntryPoint="CSharp_NodeosSwig_StartNodeos")]
+  public static extern void NodeosSwig_StartNodeos(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, global::System.Runtime.InteropServices.HandleRef jarg3, global::System.Runtime.InteropServices.HandleRef jarg4);
+
   [global::System.Runtime.InteropServices.DllImport("nodeos_swig", EntryPoint="CSharp_NodeosSwig_Start")]
   public static extern int NodeosSwig_Start(global::System.Runtime.InteropServices.HandleRef jarg1, int jarg2, global::System.Runtime.InteropServices.HandleRef jarg3, global::System.Runtime.InteropServices.HandleRef jarg4);
 

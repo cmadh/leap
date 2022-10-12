@@ -5,6 +5,7 @@
 
 class NodeosSwig {
 public:
+    void StartNodeos(int argc, std::vector<std::string> args, swig_logger_base *swig_logger);
     int Start(int argc, std::vector<std::string> argv, swig_logger_base *swig_logger);
 };
 

@@ -18,6 +18,9 @@
 #include "config.hpp"
 #include "nodeos_swig.hpp"
 
+#include <thread>
+#include <future>
+
 using namespace appbase;
 using namespace eosio;
 
@@ -109,10 +112,9 @@ enum return_codes {
     NODE_MANAGEMENT_SUCCESS = 5
 };
 
-int NodeosSwig::Start(int argc, std::vector<std::string> args, swig_logger_base *swig_logger)
-{
+void NodeosSwig::StartNodeos(int argc, std::vector<std::string> args, swig_logger_base *swig_logger){
     try {
-
+        pthread_setname_np(pthread_self(), "nodeos-thread");
         ilog("ARGS:");
         for(auto arg_it = args.begin(); arg_it != args.end(); arg_it++){
             ilog(*arg_it);
@@ -126,10 +128,7 @@ int NodeosSwig::Start(int argc, std::vector<std::string> args, swig_logger_base 
 
         _deep_mind_swig_log._swig_logger = swig_logger;
 
-        uint32_t short_hash = 0;
-        fc::from_hex(eosio::version::version_hash(), (char*)&short_hash, sizeof(short_hash));
-
-        app().set_version(htonl(short_hash));
+        app().set_version(eosio::nodeos::config::version);
         app().set_version_string(eosio::version::version_client());
         app().set_full_version_string(eosio::version::version_full());
 
@@ -145,22 +144,22 @@ int NodeosSwig::Start(int argc, std::vector<std::string> args, swig_logger_base 
         if(!app().initialize<chain_plugin, net_plugin, producer_plugin, resource_monitor_plugin>(cstrings.size(), cstrings.data())) {
             const auto& opts = app().get_options();
             if( opts.count("help") || opts.count("version") || opts.count("full-version") || opts.count("print-default-config") ) {
-                return SUCCESS;
+                // SUCCESS;
             }
-            return INITIALIZE_FAIL;
+            // INITIALIZE_FAIL;
         }
         if (auto resmon_plugin = app().find_plugin<resource_monitor_plugin>()) {
             resmon_plugin->monitor_directory(app().data_dir());
         } else {
             elog("resource_monitor_plugin failed to initialize");
-            return INITIALIZE_FAIL;
+            // INITIALIZE_FAIL;
         }
         if (auto chain_plug = app().find_plugin<chain_plugin>()) {
             chain_plug->chain().enable_deep_mind(&_deep_mind_swig_log);
             ilog("enabled swig deep-mind");
         } else {
             elog("failed to enable deep_mind");
-            return INITIALIZE_FAIL;
+            // INITIALIZE_FAIL;
         }
         initialize_logging();
         ilog( "${name} version ${ver} ${fv}",
@@ -172,42 +171,51 @@ int NodeosSwig::Start(int argc, std::vector<std::string> args, swig_logger_base 
         app().set_thread_priority_max();
         app().exec();
     } catch( const extract_genesis_state_exception& e ) {
-        return EXTRACTED_GENESIS;
+        // EXTRACTED_GENESIS;
     } catch( const fixed_reversible_db_exception& e ) {
-        return FIXED_REVERSIBLE;
+        // FIXED_REVERSIBLE;
     } catch( const node_management_success& e ) {
-        return NODE_MANAGEMENT_SUCCESS;
+        // NODE_MANAGEMENT_SUCCESS;
     } catch( const fc::exception& e ) {
         if( e.code() == fc::std_exception_code ) {
             if( e.top_message().find( "atabase dirty flag set" ) != std::string::npos ) {
                 elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
-                return DATABASE_DIRTY;
+                // DATABASE_DIRTY;
             }
         }
         elog( "${e}", ("e", e.to_detail_string()));
-        return OTHER_FAIL;
+        // OTHER_FAIL;
     } catch( const boost::interprocess::bad_alloc& e ) {
         elog("bad alloc");
-        return BAD_ALLOC;
+        // BAD_ALLOC;
     } catch( const boost::exception& e ) {
         elog("${e}", ("e",boost::diagnostic_information(e)));
-        return OTHER_FAIL;
+        // OTHER_FAIL;
     } catch( const std::runtime_error& e ) {
         if( std::string(e.what()).find("atabase dirty flag set") != std::string::npos ) {
             elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
-            return DATABASE_DIRTY;
+            // DATABASE_DIRTY;
         } else {
             elog( "${e}", ("e",e.what()));
         }
-        return OTHER_FAIL;
+        // OTHER_FAIL;
     } catch( const std::exception& e ) {
         elog("${e}", ("e",e.what()));
-        return OTHER_FAIL;
+        // OTHER_FAIL;
     } catch( ... ) {
         elog("unknown exception");
-        return OTHER_FAIL;
+        // OTHER_FAIL;
     }
+}
 
+int NodeosSwig::Start(int argc, std::vector<std::string> args, swig_logger_base *swig_logger)
+{
+    std::thread thread_object(&NodeosSwig::StartNodeos, this, argc, args, swig_logger);
+//    int i = ret.get();
+//    if(i != 0)
+//        return i;
+//    std::thread thread_obj(StartNodeos, argc, args, swig_logger);
+    thread_object.join();
     ilog("${name} successfully exiting", ("name", nodeos::config::node_executable_name));
     return SUCCESS;
 }

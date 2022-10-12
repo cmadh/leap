@@ -1710,6 +1710,10 @@ struct controller_impl {
 
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
                         producer_schedule_exception, "wrong producer schedule version specified" );
+             if(gpo.proposed_schedule.version > 1)
+                 if (auto dm_logger = get_deep_mind_logger()) {
+                     dm_logger->new_schedule = true;
+                 }
 
             std::get<building_block>(pending->_block_stage)._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
             db.modify( gpo, [&]( auto& gp ) {
@@ -2351,8 +2355,8 @@ struct controller_impl {
             break;
          }
       }
-      dlog("removed ${n} expired transactions of the ${t} input dedup list, pending block time ${pt}",
-           ("n", num_removed)("t", total)("pt", now));
+      //dlog("removed ${n} expired transactions of the ${t} input dedup list, pending block time ${pt}",
+           //("n", num_removed)("t", total)("pt", now));
    }
 
    bool sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {

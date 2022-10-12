@@ -43,6 +43,11 @@ public partial class NodeosSwig : global::System.IDisposable {
     }
   }
 
+  public void StartNodeos(int argc, StringVector args, SwigLoggerBase swig_logger) {
+    NodeosSwigModulePINVOKE.NodeosSwig_StartNodeos(swigCPtr, argc, StringVector.getCPtr(args), SwigLoggerBase.getCPtr(swig_logger));
+    if (NodeosSwigModulePINVOKE.SWIGPendingException.Pending) throw NodeosSwigModulePINVOKE.SWIGPendingException.Retrieve();
+  }
+
   public int Start(int argc, StringVector argv, SwigLoggerBase swig_logger) {
     int ret = NodeosSwigModulePINVOKE.NodeosSwig_Start(swigCPtr, argc, StringVector.getCPtr(argv), SwigLoggerBase.getCPtr(swig_logger));
     if (NodeosSwigModulePINVOKE.SWIGPendingException.Pending) throw NodeosSwigModulePINVOKE.SWIGPendingException.Retrieve();

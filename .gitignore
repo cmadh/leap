@@ -92,3 +92,4 @@ node_modules
 package-lock.json
 
 cmake-build-debug-wsl-clang/*
+cmake-build-release-wsl-clang/*

@@ -93,6 +93,8 @@ public:
     virtual void on_create_permission(const permission_object& p) = 0;
     virtual void on_modify_permission(const permission_object& old_permission, const permission_object& new_permission) = 0;
     virtual void on_remove_permission(const permission_object& permission) = 0;
+
+    bool new_schedule = false;
 private:
     uint32_t         _action_id = 0;
     ram_trace        _ram_trace;
