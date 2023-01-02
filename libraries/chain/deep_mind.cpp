@@ -11,20 +11,19 @@
 
 namespace {
 
-    void set_trace_elapsed_to_zero(eosio::chain::action_trace& trace) {
-        trace.elapsed = fc::microseconds{};
-    }
+   void set_trace_elapsed_to_zero(eosio::chain::action_trace& trace) {
+      trace.elapsed = fc::microseconds{};
+   }
 
-    void set_trace_elapsed_to_zero(eosio::chain::transaction_trace& trace) {
-        trace.elapsed = fc::microseconds{};
-        for (auto& act_trace : trace.action_traces) {
-            set_trace_elapsed_to_zero(act_trace);
-        }
-    }
+   void set_trace_elapsed_to_zero(eosio::chain::transaction_trace& trace) {
+      trace.elapsed = fc::microseconds{};
+      for (auto& act_trace : trace.action_traces) {
+         set_trace_elapsed_to_zero(act_trace);
+      }
+   }
 
 }
 
-// normal deep-mind-handler using fc_dlog-appeender writing to stdout
 namespace eosio::chain {
 
    void deep_mind_handler::update_config(deep_mind_config config)
@@ -37,13 +36,12 @@ namespace eosio::chain {
       fc::logger::update( logger_name, _logger );
    }
 
-   static const char* prefix(deep_mind_handler_base::operation_qualifier q) {
+   static const char* prefix(deep_mind_handler::operation_qualifier q) {
       switch(q)
       {
-      case deep_mind_handler_base::operation_qualifier::none: return "";
-      case deep_mind_handler_base::operation_qualifier::modify: return "MODIFY_";
-      case deep_mind_handler_base::operation_qualifier::push: return "PUSH_";
-      default: elog("Unknown operation_qualifier"); return "";
+      case deep_mind_handler::operation_qualifier::none: return "";
+      case deep_mind_handler::operation_qualifier::modify: return "MODIFY_";
+      case deep_mind_handler::operation_qualifier::push: return "PUSH_";
       }
    }
 

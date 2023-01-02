@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 
-from testUtils import Utils
 import copy
 import time
-from Cluster import Cluster
-from WalletMgr import WalletMgr
-from Node import BlockType
 import json
 import os
 import signal
 import subprocess
-from TestHelper import AppArgs
-from TestHelper import TestHelper
-from testUtils import Account
+
+from TestHarness import Account, Cluster, TestHelper, Utils, WalletMgr
+from TestHarness.Node import BlockType
+from TestHarness.TestHelper import AppArgs
 
 ########################################################################
 # trx_finality_status_test
@@ -70,7 +67,6 @@ try:
     failure_duration = 40
     extraNodeosArgs=" --transaction-finality-status-max-storage-size-gb 1 " + \
                    f"--transaction-finality-status-success-duration-sec {successDuration} --transaction-finality-status-failure-duration-sec {failure_duration}"
-    extraNodeosArgs+=" --plugin eosio::trace_api_plugin --trace-no-abis"
     extraNodeosArgs+=" --http-max-response-time-ms 990000"
     if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=pnodes, totalNodes=totalNodes, totalProducers=pnodes*prodCount,
                       useBiosBootFile=False, topo="line", extraNodeosArgs=extraNodeosArgs) is False:
@@ -146,7 +142,7 @@ try:
     state = getState(retStatus)
 
     assert (state == localState or state == inBlockState), \
-        f"ERROR: getTransactionStatus didn't return \"{localState}\" state.\n\nstatus: {json.dumps(retStatus, indent=1)}"
+        f"ERROR: getTransactionStatus didn't return \"{localState}\" or \"{inBlockState}\" state.\n\nstatus: {json.dumps(retStatus, indent=1)}"
     status.append(copy.copy(retStatus))
     startingBlockNum=testNode.getInfo()["head_block_num"]
 
@@ -154,12 +150,13 @@ try:
         bnPresent = "block_number" in status
         biPresent = "block_id" in status
         btPresent = "block_timestamp" in status
-        desc = "" if present else "not "
+        desc = "" if present else " not"
         group = bnPresent and biPresent and btPresent if present else not bnPresent and not biPresent and not btPresent
         assert group, \
             f"ERROR: getTransactionStatus should{desc} contain \"block_number\", \"block_id\", or \"block_timestamp\" since state was \"{getState(status)}\".\nstatus: {json.dumps(status, indent=1)}"
 
-    validateTrxState(status[0], present=False)
+    present = True if state == inBlockState else False
+    validateTrxState(status[0], present)
 
     def validate(status, knownTrx=True):
         assert "head_number" in status and "head_id" in status and "head_timestamp" in status, \

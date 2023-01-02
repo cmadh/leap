@@ -45,8 +45,7 @@ namespace eosio { namespace chain {
          void init_for_implicit_trx( uint64_t initial_net_usage = 0 );
 
          void init_for_input_trx( uint64_t packed_trx_unprunable_size,
-                                  uint64_t packed_trx_prunable_size,
-                                  bool skip_recording);
+                                  uint64_t packed_trx_prunable_size );
 
          void init_for_deferred_trx( fc::time_point published );
 
@@ -111,9 +110,9 @@ namespace eosio { namespace chain {
          void schedule_transaction();
          void record_transaction( const transaction_id_type& id, fc::time_point_sec expire );
 
-         void validate_cpu_usage_to_bill( int64_t billed_us, int64_t account_cpu_limit, bool check_minimum )const;
-         void validate_account_cpu_usage( int64_t billed_us, int64_t account_cpu_limit )const;
-         void validate_account_cpu_usage_estimate( int64_t billed_us, int64_t account_cpu_limit )const;
+         void validate_cpu_usage_to_bill( int64_t billed_us, int64_t account_cpu_limit, bool check_minimum, int64_t subjective_billed_us )const;
+         void validate_account_cpu_usage( int64_t billed_us, int64_t account_cpu_limit,  int64_t subjective_billed_us )const;
+         void validate_account_cpu_usage_estimate( int64_t billed_us, int64_t account_cpu_limit, int64_t subjective_billed_us )const;
 
          void disallow_transaction_extensions( const char* error_msg )const;
 
@@ -129,7 +128,7 @@ namespace eosio { namespace chain {
          fc::time_point                published;
 
 
-         vector<digest_type>           executed_action_receipt_digests;
+         deque<digest_type>           executed_action_receipt_digests;
          flat_set<account_name>        bill_to_accounts;
          flat_set<account_name>        validate_ram_usage;
 
