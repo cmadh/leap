@@ -5,6 +5,7 @@ if( UNIX AND NOT APPLE )
 endif()
 
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
+configure_file(logging.json ${CMAKE_BINARY_DIR}/tests/TestHarness/logging-template.json)
 
 target_include_directories(${NODE_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -26,21 +27,22 @@ endif()
 
 target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE appbase version
-        PRIVATE -Wl,${whole_archive_flag} login_plugin               -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} state_history_plugin       -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} trace_api_plugin           -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin           -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} net_plugin                 -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} net_api_plugin             -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} txn_test_gen_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} db_size_api_plugin         -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} producer_api_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} resource_monitor_plugin    -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} test_control_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} test_control_api_plugin    -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} prometheus_plugin          -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${build_id_flag}
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin
-        PRIVATE eosio_chain_wrap fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+        PRIVATE eosio_chain_wrap fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS}
+        Boost::dll )
+
 
 include(additionalPlugins)
 

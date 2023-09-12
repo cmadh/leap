@@ -6,6 +6,7 @@
 #include <fc/variant_object.hpp>
 
 #include <contracts.hpp>
+#include <test_contracts.hpp>
 
 using namespace eosio::chain;
 using namespace eosio::testing;
@@ -13,21 +14,13 @@ using namespace fc;
 
 using mvo = fc::mutable_variant_object;
 
-#ifndef TESTER
-#ifdef NON_VALIDATING_TEST
-#define TESTER tester
-#else
-#define TESTER validating_tester
-#endif
-#endif
-
 namespace eosio_system {
 
-class eosio_system_tester : public TESTER {
+class eosio_system_tester : public validating_tester {
 public:
 
    eosio_system_tester()
-   : eosio_system_tester([](TESTER& ) {}){}
+   : eosio_system_tester([](validating_tester& ) {}){}
 
    template<typename Lambda>
    eosio_system_tester(Lambda setup) {
@@ -36,37 +29,37 @@ public:
       produce_blocks( 2 );
 
       create_accounts({ "eosio.token"_n, "eosio.ram"_n, "eosio.ramfee"_n, "eosio.stake"_n,
-               "eosio.bpay"_n, "eosio.vpay"_n, "eosio.saving"_n, "eosio.names"_n });
+               "eosio.bpay"_n, "eosio.vpay"_n, "eosio.saving"_n, "eosio.names"_n, "eosio.rex"_n });
 
       produce_blocks( 100 );
 
-      set_code( "eosio.token"_n, contracts::eosio_token_wasm() );
-      set_abi( "eosio.token"_n, contracts::eosio_token_abi().data() );
+      set_code( "eosio.token"_n, test_contracts::eosio_token_wasm() );
+      set_abi( "eosio.token"_n, test_contracts::eosio_token_abi() );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( "eosio.token"_n );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-         token_abi_ser.set_abi(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
+         token_abi_ser.set_abi(std::move(abi), abi_serializer::create_yield_function( abi_serializer_max_time ));
       }
 
       create_currency( "eosio.token"_n, config::system_account_name, core_from_string("10000000000.0000") );
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( name("eosio") ) );
 
-      set_code( config::system_account_name, contracts::eosio_system_wasm() );
-      set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
+      set_code( config::system_account_name, test_contracts::eosio_system_wasm() );
+      set_abi( config::system_account_name, test_contracts::eosio_system_abi() );
 
       base_tester::push_action(config::system_account_name, "init"_n,
                             config::system_account_name,  mutable_variant_object()
                             ("version", 0)
-                            ("core", CORE_SYM_STR));
+                            ("core", symbol(CORE_SYMBOL).to_string()));
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-         abi_ser.set_abi(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
+         abi_ser.set_abi(std::move(abi), abi_serializer::create_yield_function( abi_serializer_max_time ));
       }
 
       produce_blocks();
@@ -421,14 +414,14 @@ public:
                                                ("is_priv", 1)
          );
 
-         set_code( "eosio.msig"_n, contracts::eosio_msig_wasm() );
-         set_abi( "eosio.msig"_n, contracts::eosio_msig_abi().data() );
+         set_code( "eosio.msig"_n, test_contracts::eosio_msig_wasm() );
+         set_abi( "eosio.msig"_n, test_contracts::eosio_msig_abi() );
 
          produce_blocks();
          const auto& accnt = control->db().get<account_object,by_name>( "eosio.msig"_n );
          abi_def msig_abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
-         msig_abi_ser.set_abi(msig_abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
+         msig_abi_ser.set_abi(std::move(msig_abi), abi_serializer::create_yield_function( abi_serializer_max_time ));
       }
       return msig_abi_ser;
    }
@@ -454,7 +447,7 @@ public:
       }
       produce_blocks( 250);
 
-      auto trace_auth = TESTER::push_action(config::system_account_name, updateauth::get_name(), config::system_account_name, mvo()
+      auto trace_auth = validating_tester::push_action(config::system_account_name, updateauth::get_name(), config::system_account_name, mvo()
                                             ("account", name(config::system_account_name).to_string())
                                             ("permission", name(config::active_name).to_string())
                                             ("parent", name(config::owner_name).to_string())
@@ -481,7 +474,7 @@ public:
       produce_blocks( 250 );
 
       auto producer_keys = control->head_block_state()->active_schedule.producers;
-      BOOST_REQUIRE_EQUAL( 21, producer_keys.size() );
+      BOOST_REQUIRE_EQUAL( 21u, producer_keys.size() );
       BOOST_REQUIRE_EQUAL( name("defproducera"), producer_keys[0].producer_name );
 
       return producer_names;

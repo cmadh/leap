@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.8 )
+cmake_minimum_required( VERSION 3.16 )
 
 project( leap )
 include(CTest) # suppresses DartConfiguration.tcl error
@@ -9,20 +9,26 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 include( GNUInstallDirs )
 include( MASSigning )
 
-set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 3)
-set(VERSION_MINOR 2)
+set(VERSION_MAJOR 4)
+set(VERSION_MINOR 1)
 set(VERSION_PATCH 0)
-#set(VERSION_SUFFIX rc2)
+set(VERSION_SUFFIX dev)
 
 if(VERSION_SUFFIX)
     set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}")
 else()
     set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 endif()
+
+
+# Options
+option(ENABLE_WERROR "Enable `-Werror` compilation flag." Off)
+option(ENABLE_WEXTRA "Enable `-Wextra` compilation flag." Off)
+
 
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
 set( NODE_EXECUTABLE_NAME nodeos )
@@ -31,12 +37,8 @@ set( LEAP_UTIL_EXECUTABLE_NAME leap-util )
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
-        message(FATAL_ERROR "GCC version must be at least 8.0!")
-    endif()
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
-        message(FATAL_ERROR "Clang version must be at least 5.0!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.2)
+        message(FATAL_ERROR "GCC version must be at least 10.2.0!")
     endif()
 endif()
 
@@ -60,8 +62,6 @@ if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
       set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl@3;/usr/local/opt/openssl@1.1")
    endif()
 endif()
-# fc also adds these definitions to its public interface. once fc becomes the sole importer of openssl, this should be removed
-add_definitions(-DOPENSSL_API_COMPAT=0x10100000L -DOPENSSL_NO_DEPRECATED)
 
 option(ENABLE_OC "Enable eosvm-oc on supported platforms" ON)
 
@@ -131,6 +131,16 @@ else()
     endif()
 endif()
 
+if(ENABLE_WERROR)
+  set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Werror" )
+  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror" )
+endif()
+if(ENABLE_WEXTRA)
+  set( CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wextra" )
+  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra" )
+endif()
+
+
 option(EOSIO_ENABLE_DEVELOPER_OPTIONS "enable developer options for Leap" OFF)
 
 # based on http://www.delorie.com/gnu/docs/gdb/gdb_70.html
@@ -167,9 +177,10 @@ endif()
 
 message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for 'eosio' account" )
 
-find_package( Gperftools QUIET )
-if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling Leap with TCMalloc")
+option(ENABLE_TCMALLOC "use tcmalloc (requires gperftools)" OFF)
+if( ENABLE_TCMALLOC )
+    find_package( Gperftools REQUIRED )
+    message( STATUS "Compiling Leap with TCMalloc")
     #if doing this by the book, simply link_libraries( ${GPERFTOOLS_TCMALLOC} ) here. That will
     #give the performance benefits of tcmalloc but since it won't be linked last
     #the heap profiler & checker may not be accurate. This here is rather undocumented behavior
@@ -189,9 +200,6 @@ add_subdirectory( tools )
 add_subdirectory( benchmark )
 
 option(DISABLE_WASM_SPEC_TESTS "disable building of wasm spec unit tests" OFF)
-
-install(FILES testnet.template DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/launcher COMPONENT dev EXCLUDE_FROM_ALL)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testnet.template ${CMAKE_CURRENT_BINARY_DIR}/etc/eosio/launcher/testnet.template COPYONLY)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosio.version.in ${CMAKE_CURRENT_BINARY_DIR}/eosio.version.hpp)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/eosio.version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} COMPONENT dev EXCLUDE_FROM_ALL)
@@ -224,13 +232,48 @@ configure_file(libraries/softfloat/COPYING.txt                             licen
 configure_file(libraries/wasm-jit/LICENSE                                  licenses/leap/LICENSE.wavm      COPYONLY)
 configure_file(libraries/libfc/secp256k1/secp256k1/COPYING                 licenses/leap/LICENSE.secp256k1 COPYONLY)
 configure_file(libraries/libfc/include/fc/crypto/webauthn_json/license.txt licenses/leap/LICENSE.rapidjson COPYONLY)
-configure_file(libraries/libfc/src/network/LICENSE.go                      licenses/leap/LICENSE.go        COPYONLY)
 configure_file(libraries/eos-vm/LICENSE                                    licenses/leap/LICENSE.eos-vm    COPYONLY)
-configure_file(libraries/libfc/libraries/ff/LICENSE                        licenses/leap/LICENSE.libff     COPYONLY)
+configure_file(libraries/prometheus/prometheus-cpp/LICENSE                 licenses/leap/LICENSE.prom      COPYONLY)
 configure_file(programs/cleos/LICENSE.CLI11                                licenses/leap/LICENSE.CLI11     COPYONLY)
-configure_file(libraries/yubihsm/LICENSE                                   licenses/leap/LICENSE.yubihsm   COPYONLY)
+configure_file(libraries/libfc/libraries/bls12-381/LICENSE                 licenses/leap/LICENSE.bls12-381 COPYONLY)
 
 install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/licenses/leap" DESTINATION "${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/" COMPONENT base)
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libraries/testing/contracts DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/leap_testing/libraries/testing COMPONENT dev EXCLUDE_FROM_ALL
+        PATTERN "CMakeFiles" EXCLUDE
+        PATTERN "*.cmake" EXCLUDE
+        PATTERN "Makefile" EXCLUDE)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/unittests/contracts DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/leap_testing/unittests COMPONENT dev EXCLUDE_FROM_ALL
+        PATTERN "CMakeFiles" EXCLUDE
+        PATTERN "*.cmake" EXCLUDE
+        PATTERN "Makefile" EXCLUDE)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tests/TestHarness DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/leap_testing/tests COMPONENT dev EXCLUDE_FROM_ALL
+        FILES_MATCHING
+        PATTERN "*.py"
+        PATTERN "*.json"
+        PATTERN "__pycache__" EXCLUDE
+        PATTERN "CMakeFiles" EXCLUDE)
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21)
+   # Cmake versions < 3.21 did not support installing symbolic links to a directory via install(FILES ...)
+   # Cmake 3.21 fixed this (https://gitlab.kitware.com/cmake/cmake/-/commit/d71a7cc19d6e03f89581efdaa8d63db216184d40)
+   # If/when the lowest cmake version supported becomes >= 3.21, the else block as well as the postinit and prerm scripts
+   # would be a good option to remove in favor of using the facilities in cmake / cpack directly.
+
+   add_custom_target(link_target ALL
+      COMMAND ${CMAKE_COMMAND} -E make_directory lib/python3/dist-packages
+      COMMAND ${CMAKE_COMMAND} -E create_symlink ../../../share/leap_testing/tests/TestHarness lib/python3/dist-packages/TestHarness
+      COMMAND ${CMAKE_COMMAND} -E make_directory share/leap_testing
+      COMMAND ${CMAKE_COMMAND} -E create_symlink ../../bin share/leap_testing/bin)
+
+   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib/python3/dist-packages/TestHarness DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/python3/dist-packages COMPONENT dev EXCLUDE_FROM_ALL)
+   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/leap_testing/bin DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/leap_testing COMPONENT dev EXCLUDE_FROM_ALL)
+else()
+   # The following install(SCRIPT ...) steps are necessary for `make dev-install` to work on cmake versions < 3.21.
+   install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/scripts/install_testharness_symlinks.cmake COMPONENT dev EXCLUDE_FROM_ALL)
+
+   # The `make package` installation of symlinks happens via the `postinst` script installed in cmake.package via the line below
+endif()
 
 configure_file(${CMAKE_SOURCE_DIR}/libraries/cli11/bash-completion/completions/leap-util
                ${CMAKE_BINARY_DIR}/programs/leap-util/bash-completion/completions/leap-util COPYONLY)
@@ -240,6 +283,18 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/cli11/bash-completion/completions/c
 install(FILES libraries/cli11/bash-completion/completions/leap-util DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/bash-completion/completions COMPONENT base)
 install(FILES libraries/cli11/bash-completion/completions/cleos DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/bash-completion/completions COMPONENT base)
 
+# Add the boost submodule we used to build to our install package, so headers can be found for libtester
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/libraries/boost/"
+        DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/leap_boost
+        COMPONENT dev EXCLUDE_FROM_ALL
+        PATTERN ".git/*" EXCLUDE
+        PATTERN "example/*" EXCLUDE
+        PATTERN "bench/*" EXCLUDE
+        PATTERN "doc/*" EXCLUDE
+        PATTERN "libs/*/test" EXCLUDE
+        PATTERN "tools/*/test" EXCLUDE
+        )
+
 add_custom_target(dev-install
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
   COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}"
@@ -247,10 +302,9 @@ add_custom_target(dev-install
   USES_TERMINAL
 )
 
-get_property(_CTEST_CUSTOM_TESTS_IGNORE GLOBAL PROPERTY CTEST_CUSTOM_TESTS_IGNORE)
-file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "SET(CTEST_CUSTOM_TESTS_IGNORE ${_CTEST_CUSTOM_TESTS_IGNORE})")
-
 include(doxygen)
+
+option(ENABLE_LEAP_DEV_DEB "Enable building the leap-dev .deb package" OFF)
 
 include(package.cmake)
 include(CPack)

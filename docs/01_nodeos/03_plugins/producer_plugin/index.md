@@ -23,7 +23,6 @@ These can be specified from both the `nodeos` command-line or the `config.ini` f
 
 ```console
 Config Options for eosio::producer_plugin:
-
   -e [ --enable-stale-production ]      Enable block production, even if the
                                         chain is stale.
   -x [ --pause-on-startup ]             Start this node in a state where
@@ -40,26 +39,22 @@ Config Options for eosio::producer_plugin:
   -p [ --producer-name ] arg            ID of producer controlled by this node
                                         (e.g. inita; may specify multiple
                                         times)
-  --private-key arg                     (DEPRECATED - Use signature-provider
-                                        instead) Tuple of [public key, WIF
-                                        private key] (may specify multiple
-                                        times)
   --signature-provider arg (=EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV=KEY:5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3)
                                         Key=Value pairs in the form
                                         <public-key>=<provider-spec>
                                         Where:
                                            <public-key>    is a string form of
-                                                           a vaild Antelope public
+                                                           a valid EOS public
                                                            key
 
                                            <provider-spec> is a string in the
                                                            form <provider-type>
                                                            :<data>
 
-                                           <provider-type> is KEY, or KEOSD
+                                           <provider-type> is KEY, KEOSD, or SE
 
                                            KEY:<data>      is a string form of
-                                                           a valid Antelope
+                                                           a valid EOS
                                                            private key which
                                                            maps to the provided
                                                            public key
@@ -69,10 +64,6 @@ Config Options for eosio::producer_plugin:
                                                            and the approptiate
                                                            wallet(s) are
                                                            unlocked
-  --keosd-provider-timeout arg (=5)     Limits the maximum time (in
-                                        milliseconds) that is allowed for
-                                        sending blocks to a keosd provider for
-                                        signing
   --greylist-account arg                account that can not access to extended
                                         CPU/NET virtual resources
   --greylist-limit arg (=1000)          Limit (between 1 and 1000) on the
@@ -107,9 +98,10 @@ Config Options for eosio::producer_plugin:
   --max-scheduled-transaction-time-per-block-ms arg (=100)
                                         Maximum wall-clock time, in
                                         milliseconds, spent retiring scheduled
-                                        transactions in any block before
-                                        returning to normal transaction
-                                        processing.
+                                        transactions (and incoming transactions
+                                        according to incoming-defer-ratio) in
+                                        any block before returning to normal
+                                        transaction processing.
   --subjective-cpu-leeway-us arg (=31000)
                                         Time in microseconds allowed for a
                                         transaction that starts with
@@ -119,11 +111,6 @@ Config Options for eosio::producer_plugin:
                                         Sets the maximum amount of failures
                                         that are allowed for a given account
                                         per block.
-                                        Disregarded for accounts that have been
-                                        whitelisted by disabling subjective
-                                        billing for the account using the
-                                        disable-subjective-account-billing
-                                        configuration option.
   --subjective-account-decay-time-minutes arg (=1440)
                                         Sets the time to return full subjective
                                         cpu for accounts
@@ -135,16 +122,9 @@ Config Options for eosio::producer_plugin:
                                         transaction queue. Exceeding this value
                                         will subjectively drop transaction with
                                         resource exhaustion.
-  --disable-api-persisted-trx           Disable the re-apply of API
-                                        transactions.
-  --disable-subjective-billing arg (=1) Disable subjective CPU billing for
-                                        API/P2P transactions
   --disable-subjective-account-billing arg
                                         Account which is excluded from
                                         subjective CPU billing
-                                        Account is considered whitelisted and
-                                        will not be subject to enforcement of
-                                        subjective-account-max-failures.
   --disable-subjective-p2p-billing arg (=1)
                                         Disable subjective CPU billing for P2P
                                         transactions

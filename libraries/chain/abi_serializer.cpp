@@ -4,6 +4,7 @@
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/varint.hpp>
+#include <fc/time.hpp>
 
 namespace eosio { namespace chain {
 
@@ -23,11 +24,11 @@ namespace eosio { namespace chain {
 
    template <typename T>
    inline fc::variant variant_from_stream(fc::datastream<const char*>& stream, const abi_serializer::yield_function_t& yield) {
-      fc::yield_function_t y = [&yield](){ yield(0); }; // create yield function matching fc::variant requirements, 0 for recursive depth
       T temp;
       fc::raw::unpack( stream, temp );
-      y();
-      return fc::variant( temp, y );
+      yield(0);
+      // create yield function matching fc::variant requirements, 0 for recursive depth
+      return fc::variant( temp, [yield](){ yield(0); } );
    }
 
    template <typename T>
@@ -70,9 +71,9 @@ namespace eosio { namespace chain {
       );
    }
 
-   abi_serializer::abi_serializer( const abi_def& abi, const yield_function_t& yield ) {
+   abi_serializer::abi_serializer( abi_def abi, const yield_function_t& yield ) {
       configure_built_in_types();
-      set_abi(abi, yield);
+      set_abi(std::move(abi), yield);
    }
 
    abi_serializer::abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time) {
@@ -128,10 +129,18 @@ namespace eosio { namespace chain {
       built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
    }
 
-   void abi_serializer::set_abi(const abi_def& abi, const yield_function_t& yield) {
-      impl::abi_traverse_context ctx(yield);
+   void abi_serializer::set_abi(abi_def abi, const yield_function_t& yield) {
+      impl::abi_traverse_context ctx(yield, fc::microseconds{});
 
       EOS_ASSERT(starts_with(abi.version, "eosio::abi/1."), unsupported_abi_version_exception, "ABI has an unsupported version");
+
+      size_t types_size = abi.types.size();
+      size_t structs_size = abi.structs.size();
+      size_t actions_size = abi.actions.size();
+      size_t tables_size = abi.tables.size();
+      size_t error_messages_size = abi.error_messages.size();
+      size_t variants_size = abi.variants.value.size();
+      size_t action_results_size = abi.action_results.value.size();
 
       typedefs.clear();
       structs.clear();
@@ -141,41 +150,41 @@ namespace eosio { namespace chain {
       variants.clear();
       action_results.clear();
 
-      for( const auto& st : abi.structs )
-         structs[st.name] = st;
+      for( auto& st : abi.structs )
+         structs[st.name] = std::move(st);
 
-      for( const auto& td : abi.types ) {
+      for( auto& td : abi.types ) {
          EOS_ASSERT(!_is_type(td.new_type_name, ctx), duplicate_abi_type_def_exception,
                     "type already exists", ("new_type_name",impl::limit_size(td.new_type_name)));
-         typedefs[td.new_type_name] = td.type;
+         typedefs[std::move(td.new_type_name)] = std::move(td.type);
       }
 
-      for( const auto& a : abi.actions )
-         actions[a.name] = a.type;
+      for( auto& a : abi.actions )
+         actions[std::move(a.name)] = std::move(a.type);
 
-      for( const auto& t : abi.tables )
-         tables[t.name] = t.type;
+      for( auto& t : abi.tables )
+         tables[std::move(t.name)] = std::move(t.type);
 
-      for( const auto& e : abi.error_messages )
-         error_messages[e.error_code] = e.error_msg;
+      for( auto& e : abi.error_messages )
+         error_messages[std::move(e.error_code)] = std::move(e.error_msg);
 
-      for( const auto& v : abi.variants.value )
-         variants[v.name] = v;
+      for( auto& v : abi.variants.value )
+         variants[v.name] = std::move(v);
 
-      for( const auto& r : abi.action_results.value )
-         action_results[r.name] = r.result_type;
+      for( auto& r : abi.action_results.value )
+         action_results[std::move(r.name)] = std::move(r.result_type);
 
       /**
        *  The ABI vector may contain duplicates which would make it
        *  an invalid ABI
        */
-      EOS_ASSERT( typedefs.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected" );
-      EOS_ASSERT( structs.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected" );
-      EOS_ASSERT( actions.size() == abi.actions.size(), duplicate_abi_action_def_exception, "duplicate action definition detected" );
-      EOS_ASSERT( tables.size() == abi.tables.size(), duplicate_abi_table_def_exception, "duplicate table definition detected" );
-      EOS_ASSERT( error_messages.size() == abi.error_messages.size(), duplicate_abi_err_msg_def_exception, "duplicate error message definition detected" );
-      EOS_ASSERT( variants.size() == abi.variants.value.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected" );
-      EOS_ASSERT( action_results.size() == abi.action_results.value.size(), duplicate_abi_action_results_def_exception, "duplicate action results definition detected" );
+      EOS_ASSERT( typedefs.size() == types_size, duplicate_abi_type_def_exception, "duplicate type definition detected" );
+      EOS_ASSERT( structs.size() == structs_size, duplicate_abi_struct_def_exception, "duplicate struct definition detected" );
+      EOS_ASSERT( actions.size() == actions_size, duplicate_abi_action_def_exception, "duplicate action definition detected" );
+      EOS_ASSERT( tables.size() == tables_size, duplicate_abi_table_def_exception, "duplicate table definition detected" );
+      EOS_ASSERT( error_messages.size() == error_messages_size, duplicate_abi_err_msg_def_exception, "duplicate error message definition detected" );
+      EOS_ASSERT( variants.size() == variants_size, duplicate_abi_variant_def_exception, "duplicate variant definition detected" );
+      EOS_ASSERT( action_results.size() == action_results_size, duplicate_abi_action_results_def_exception, "duplicate action results definition detected" );
 
       validate(ctx);
    }
@@ -227,7 +236,7 @@ namespace eosio { namespace chain {
    }
 
    bool abi_serializer::is_type(const std::string_view& type, const yield_function_t& yield)const {
-      impl::abi_traverse_context ctx(yield);
+      impl::abi_traverse_context ctx(yield, fc::microseconds{});
       return _is_type(type, ctx);
    }
 
@@ -456,23 +465,27 @@ namespace eosio { namespace chain {
    }
 
    fc::variant abi_serializer::binary_to_variant( const std::string_view& type, const bytes& binary, const yield_function_t& yield, bool short_path )const {
-      impl::binary_to_variant_context ctx(*this, yield, type);
+      impl::binary_to_variant_context ctx(*this, yield, fc::microseconds{}, type);
       ctx.short_path = short_path;
       return _binary_to_variant(type, binary, ctx);
    }
 
-   fc::variant abi_serializer::binary_to_variant( const std::string_view& type, const bytes& binary, const fc::microseconds& max_serialization_time, bool short_path )const {
-      return binary_to_variant( type, binary, create_yield_function(max_serialization_time), short_path );
+   fc::variant abi_serializer::binary_to_variant( const std::string_view& type, const bytes& binary, const fc::microseconds& max_action_data_serialization_time, bool short_path )const {
+      impl::binary_to_variant_context ctx(*this, create_depth_yield_function(), max_action_data_serialization_time, type);
+      ctx.short_path = short_path;
+      return _binary_to_variant(type, binary, ctx);
    }
 
    fc::variant abi_serializer::binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const yield_function_t& yield, bool short_path )const {
-      impl::binary_to_variant_context ctx(*this, yield, type);
+      impl::binary_to_variant_context ctx(*this, yield, fc::microseconds{}, type);
       ctx.short_path = short_path;
       return _binary_to_variant(type, binary, ctx);
    }
 
-   fc::variant abi_serializer::binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path )const {
-      return binary_to_variant( type, binary, create_yield_function(max_serialization_time), short_path );
+   fc::variant abi_serializer::binary_to_variant( const std::string_view& type, fc::datastream<const char*>& binary, const fc::microseconds& max_action_data_serialization_time, bool short_path )const {
+      impl::binary_to_variant_context ctx(*this, create_depth_yield_function(), max_action_data_serialization_time, type);
+      ctx.short_path = short_path;
+      return _binary_to_variant(type, binary, ctx);
    }
 
    void abi_serializer::_variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char *>& ds, impl::variant_to_binary_context& ctx )const
@@ -535,14 +548,15 @@ namespace eosio { namespace chain {
             bool disallow_additional_fields = false;
             for( uint32_t i = 0; i < st.fields.size(); ++i ) {
                const auto& field = st.fields[i];
-               if( vo.contains( string(field.name).c_str() ) ) {
+               bool present = vo.contains(string(field.name).c_str());
+               if( present || is_optional(field.type) ) {
                   if( disallow_additional_fields )
                      EOS_THROW( pack_exception, "Unexpected field '${f}' found in input object while processing struct '${p}'",
                                 ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                   {
                      auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
                      auto h2 = ctx.disallow_extensions_unless( &field == &st.fields.back() );
-                     _variant_to_binary(_remove_bin_extension(field.type), vo[field.name], ds, ctx);
+                     _variant_to_binary(_remove_bin_extension(field.type), present ? vo[field.name] : fc::variant(nullptr), ds, ctx);
                   }
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   disallow_additional_fields = true;
@@ -595,23 +609,27 @@ namespace eosio { namespace chain {
    } FC_CAPTURE_AND_RETHROW() }
 
    bytes abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, const yield_function_t& yield, bool short_path )const {
-      impl::variant_to_binary_context ctx(*this, yield, type);
+      impl::variant_to_binary_context ctx(*this, yield, fc::microseconds{}, type);
       ctx.short_path = short_path;
       return _variant_to_binary(type, var, ctx);
    }
 
-   bytes abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path ) const {
-       return variant_to_binary( type, var, create_yield_function(max_serialization_time), short_path );
+   bytes abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, const fc::microseconds& max_action_data_serialization_time, bool short_path ) const {
+      impl::variant_to_binary_context ctx(*this, create_depth_yield_function(), max_action_data_serialization_time, type);
+      ctx.short_path = short_path;
+      return _variant_to_binary(type, var, ctx);
    }
 
    void  abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const yield_function_t& yield, bool short_path )const {
-      impl::variant_to_binary_context ctx(*this, yield, type);
+      impl::variant_to_binary_context ctx(*this, yield, fc::microseconds{}, type);
       ctx.short_path = short_path;
       _variant_to_binary(type, var, ds, ctx);
    }
 
-   void  abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path ) const {
-       variant_to_binary( type, var, create_yield_function(max_serialization_time), short_path );
+   void  abi_serializer::variant_to_binary( const std::string_view& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_action_data_serialization_time, bool short_path ) const {
+      impl::variant_to_binary_context ctx(*this, create_depth_yield_function(), max_action_data_serialization_time, type);
+      ctx.short_path = short_path;
+      _variant_to_binary(type, var, ds, ctx);
    }
 
    type_name abi_serializer::get_action_type(name action)const {
@@ -642,9 +660,7 @@ namespace eosio { namespace chain {
    namespace impl {
 
       fc::scoped_exit<std::function<void()>> abi_traverse_context::enter_scope() {
-         std::function<void()> callback = [old_recursion_depth=recursion_depth, this](){
-            recursion_depth = old_recursion_depth;
-         };
+         std::function<void()> callback = [this](){ --recursion_depth; };
 
          ++recursion_depth;
          yield( recursion_depth );

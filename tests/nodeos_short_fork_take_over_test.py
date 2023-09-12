@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 
 import time
-import decimal
-import math
-import re
 import signal
 
-from TestHarness import Cluster, Node, TestHelper, Utils, WalletMgr
-from TestHarness.Node import BlockType
+from TestHarness import Cluster, TestHelper, Utils, WalletMgr
 
 ###############################################################
 # nodeos_short_fork_take_over_test
@@ -18,8 +14,6 @@ from TestHarness.Node import BlockType
 #
 ###############################################################
 Print=Utils.Print
-
-from core_symbol import CORE_SYMBOL
 
 def analyzeBPs(bps0, bps1, expectDivergence):
     start=0
@@ -111,25 +105,20 @@ def getMinHeadAndLib(prodNodes):
 
 
 
-args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
-                              "--wallet-port"})
+args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running",
+                              "--wallet-port","--unshared"})
 Utils.Debug=args.v
 totalProducerNodes=2
 totalNonProducerNodes=1
 totalNodes=totalProducerNodes+totalNonProducerNodes
 maxActiveProducers=3
 totalProducers=maxActiveProducers
-cluster=Cluster(walletd=True)
+cluster=Cluster(unshared=args.unshared, keepRunning=args.leave_running, keepLogs=args.keep_logs)
 dumpErrorDetails=args.dump_error_details
-keepLogs=args.keep_logs
-dontKill=args.leave_running
-killAll=args.clean_run
 walletPort=args.wallet_port
 
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
-killEosInstances=not dontKill
-killWallet=not dontKill
 
 WalletdName=Utils.EosWalletName
 ClientName="cleos"
@@ -138,8 +127,6 @@ try:
     TestHelper.printSystemInfo("BEGIN")
 
     cluster.setWalletMgr(walletMgr)
-    cluster.killall(allInstances=killAll)
-    cluster.cleanup()
     Print("Stand up cluster")
     specificExtraNodeosArgs={}
     # producer nodes will be mapped to 0 through totalProducerNodes-1, so the number totalProducerNodes will be the non-producing node
@@ -152,7 +139,7 @@ try:
     # and the only connection between those 2 groups is through the bridge node
     if cluster.launch(prodCount=2, topo="bridge", pnodes=totalProducerNodes,
                       totalNodes=totalNodes, totalProducers=totalProducers,
-                      useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs, onlySetProds=True) is False:
+                      specificExtraNodeosArgs=specificExtraNodeosArgs, onlySetProds=True) is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
     Print("Validating system accounts after bootstrap")
@@ -420,16 +407,17 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killWallet, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, dumpErrorDetails=dumpErrorDetails)
 
-    if not testSuccessful:
-        Print(Utils.FileDivider)
-        Print("Compare Blocklog")
-        cluster.compareBlockLogs()
-        Print(Utils.FileDivider)
-        Print("Compare Blocklog")
-        cluster.printBlockLog()
-        Print(Utils.FileDivider)
+# Too much output for ci/cd
+#     if not testSuccessful:
+#         Print(Utils.FileDivider)
+#         Print("Compare Blocklog")
+#         cluster.compareBlockLogs()
+#         Print(Utils.FileDivider)
+#         Print("Print Blocklog")
+#         cluster.printBlockLog()
+#         Print(Utils.FileDivider)
 
 exitCode = 0 if testSuccessful else 1
 exit(exitCode)

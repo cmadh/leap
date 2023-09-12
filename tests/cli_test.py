@@ -4,14 +4,17 @@
 # response to the `--help` option. It also contains a couple of additional
 # CLI-related checks as well as test cases for CLI bugfixes.
 
+import datetime
 import subprocess
 import re
 import os
 import time
+import shlex
 import shutil
 import signal
+from pathlib import Path
 
-from TestHarness import Account, Cluster, Node, ReturnType, Utils, WalletMgr
+from TestHarness import Account, Node, ReturnType, Utils, WalletMgr
 
 testSuccessful=False
 
@@ -45,7 +48,7 @@ def cli11_bugfix_test():
 
     # Make sure that the command failed because of the connection error,
     # not the command line parsing error.
-    assert(b'Connection refused' in completed_process.stderr)
+    assert(b'Failed http request to nodeos' in completed_process.stderr)
 
 
 def cli11_optional_option_arg_test():
@@ -164,7 +167,7 @@ def cleos_abi_file_test():
     # use URL http://127.0.0.1:12345 to make sure cleos not to connect to any running nodeos
     cmd = ['./programs/cleos/cleos', '-u', 'http://127.0.0.1:12345', 'convert', 'pack_action_data', account, action, unpacked_action_data]
     outs, errs = processCleosCommand(cmd)
-    assert(b'Connection refused' in errs)
+    assert(b'Failed http request to nodeos' in errs)
 
     # invalid option --abi-file
     invalid_abi_arg = 'eosio.token' + ' ' + token_abi_path
@@ -352,9 +355,10 @@ def abi_file_with_nodeos_test():
         os.makedirs(data_dir, exist_ok=True)
         walletMgr = WalletMgr(True)
         walletMgr.launch()
-        node = Node('localhost', 8888, nodeId, cmd="./programs/nodeos/nodeos -e -p eosio --plugin eosio::trace_api_plugin --trace-no-abis --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::chain_plugin --plugin eosio::http_plugin --access-control-allow-origin=* --http-validate-host=false --resource-monitor-not-shutdown-on-threshold-exceeded " + "--data-dir " + data_dir + " --config-dir " + data_dir, walletMgr=walletMgr)
-        node.verifyAlive() # Setting node state to not alive
-        node.relaunch(newChain=True, cachePopen=True)
+        cmd = "./programs/nodeos/nodeos -e -p eosio --plugin eosio::trace_api_plugin --trace-no-abis --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::chain_plugin --plugin eosio::http_plugin --access-control-allow-origin=* --http-validate-host=false --max-transaction-time=-1 --resource-monitor-not-shutdown-on-threshold-exceeded " + "--data-dir " + data_dir + " --config-dir " + data_dir
+        node = Node('localhost', 8888, nodeId, data_dir=Path(data_dir), config_dir=Path(data_dir), cmd=shlex.split(cmd), launch_time=datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'), walletMgr=walletMgr)
+        time.sleep(5)
+        node.waitForBlock(1)
         accountNames = ["eosio", "eosio.token", "alice", "bob"]
         accounts = []
         for name in accountNames:
@@ -380,7 +384,7 @@ def abi_file_with_nodeos_test():
 
         node.processCleosCmd('set abi eosio.token ' + malicious_token_abi_path, 'set malicious eosio.token abi', returnType=ReturnType.raw)
 
-        cmdArr = node._Node__transferFundsCmdArr(accounts[2], accounts[3], '25.0000 SYS', 'm', False, None, False, False, 90, False)
+        cmdArr = node.transferFundsCmdArr(accounts[2], accounts[3], '25.0000 SYS', 'm', False, None, False, False, 90, False)
         cmdArr.insert(6, '--print-request')
         cmdArr.insert(7, '--abi-file')
         cmdArr.insert(8, token_abi_file_arg)
@@ -398,20 +402,16 @@ def abi_file_with_nodeos_test():
             Utils.Print("Test failed.")
         if node:
             if not node.killed:
-                if node.pid:
-                    os.kill(node.pid, signal.SIGKILL)
+                node.kill(signal.SIGKILL)
         if testSuccessful:
             Utils.Print("Cleanup nodeos data.")
-            shutil.rmtree(data_dir)
+            shutil.rmtree(Utils.DataPath)
 
         if malicious_token_abi_path:
             if os.path.exists(malicious_token_abi_path):
                 os.remove(malicious_token_abi_path)
 
-        walletMgr.killall()
-        if testSuccessful:
-            Utils.Print("Cleanup wallet data.")
-            walletMgr.cleanup()
+        walletMgr.testFailed = not testSuccessful
 
 nodeos_help_test()
 

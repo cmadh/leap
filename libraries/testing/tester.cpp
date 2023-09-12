@@ -20,6 +20,35 @@ eosio::chain::asset core_from_string(const std::string& s) {
 }
 
 namespace eosio { namespace testing {
+
+   // required by boost::unit_test::data
+   std::ostream& operator<<(std::ostream& os, setup_policy p) {
+      switch(p) {
+         case setup_policy::none:
+            os << "none";
+            break;
+         case setup_policy::old_bios_only:
+            os << "old_bios_only";
+            break;
+         case setup_policy::preactivate_feature_only:
+            os << "preactivate_feature_only";
+            break;
+         case setup_policy::preactivate_feature_and_new_bios:
+            os << "preactivate_feature_and_new_bios";
+            break;
+         case setup_policy::old_wasm_parser:
+            os << "old_wasm_parser";
+            break;
+         case setup_policy::full:
+            os << "full";
+            break;
+         default:
+            FC_ASSERT(false, "Unknown setup_policy");
+      }
+      return os;
+   }
+
+
    std::string read_wast( const char* fn ) {
       std::ifstream wast_file(fn);
       FC_ASSERT( wast_file.is_open(), "wast file cannot be found" );
@@ -272,11 +301,14 @@ namespace eosio { namespace testing {
       if( !expected_chain_id ) {
          expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
          if( !expected_chain_id ) {
-            if( fc::is_regular_file( cfg.blocks_dir / "blocks.log" ) ) {
-               expected_chain_id = block_log::extract_chain_id( cfg.blocks_dir );
-            } else {
-               expected_chain_id = genesis_state().compute_chain_id();
+            std::filesystem::path retained_dir;
+            auto partitioned_config = std::get_if<partitioned_blocklog_config>(&cfg.blog);
+            if (partitioned_config) {
+               retained_dir = partitioned_config->retained_dir;
+               if (retained_dir.is_relative())
+                  retained_dir = cfg.blocks_dir/retained_dir;
             }
+            expected_chain_id = block_log::extract_chain_id( cfg.blocks_dir, retained_dir );
          }
       }
 
@@ -322,7 +354,7 @@ namespace eosio { namespace testing {
       auto bsf = control->create_block_state_future(b->calculate_id(), b);
       unapplied_transactions.add_aborted( control->abort_block() );
       controller::block_report br;
-      control->push_block( br, bsf, [this]( const branch_type& forked_branch ) {
+      control->push_block( br, bsf.get(), [this]( const branch_type& forked_branch ) {
          unapplied_transactions.add_forked( forked_branch );
       }, [this]( const transaction_id_type& id ) {
          return unapplied_transactions.get_trx( id );
@@ -406,7 +438,8 @@ namespace eosio { namespace testing {
          preactivated_protocol_features.end()
       );
 
-      control->start_block( block_time, head_block_number - last_produced_block_num, feature_to_be_activated );
+      control->start_block( block_time, head_block_number - last_produced_block_num, feature_to_be_activated,
+                            controller::block_status::incomplete );
 
       // Clear the list, if start block finishes successfuly, the protocol features should be assumed to be activated
       protocol_features_to_be_activated_wo_preactivation.clear();
@@ -504,7 +537,7 @@ namespace eosio { namespace testing {
 
 
   void base_tester::set_transaction_headers( transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
-     trx.expiration = control->head_block_time() + fc::seconds(expiration);
+     trx.expiration = fc::time_point_sec{control->head_block_time() + fc::seconds(expiration)};
      trx.set_reference_block( control->head_block_id() );
 
      trx.max_net_usage_words = 0; // No limit
@@ -581,7 +614,8 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us,
-                                                        bool no_throw
+                                                        bool no_throw,
+                                                        transaction_metadata::trx_type trx_type
                                                       )
    { try {
       if( !control->is_building_block() )
@@ -596,7 +630,7 @@ namespace eosio { namespace testing {
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
       auto ptrx = std::make_shared<packed_transaction>( trx, c );
-      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit, transaction_metadata::trx_type::input );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit, trx_type );
       auto r = control->push_transaction( fut.get(), deadline, fc::microseconds::maximum(), billed_cpu_time_us, billed_cpu_time_us > 0, 0 );
       if (no_throw) return r;
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
@@ -681,7 +715,7 @@ namespace eosio { namespace testing {
                                    const variant_object& data )const { try {
       const auto& acnt = control->get_account(code);
       auto abi = acnt.get_abi();
-      chain::abi_serializer abis(abi, abi_serializer::create_yield_function( abi_serializer_max_time ));
+      chain::abi_serializer abis(std::move(abi), abi_serializer::create_yield_function( abi_serializer_max_time ));
 
       string action_type_name = abis.get_action_type(acttype);
       FC_ASSERT( action_type_name != string(), "unknown action type ${a}", ("a",acttype) );
@@ -862,7 +896,7 @@ namespace eosio { namespace testing {
                                    .account    = account,
                                    .permission = perm,
                                    .parent     = parent,
-                                   .auth       = move(auth),
+                                   .auth       = std::move(auth),
                                 });
 
          set_transaction_headers(trx);
@@ -931,7 +965,7 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW( (account) )
 
 
-   void base_tester::set_abi( account_name account, const char* abi_json, const private_key_type* signer ) {
+   void base_tester::set_abi( account_name account, const std::string& abi_json, const private_key_type* signer ) {
       auto abi = fc::json::from_string(abi_json).template as<abi_def>();
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
@@ -947,6 +981,13 @@ namespace eosio { namespace testing {
          trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
       }
       push_transaction( trx );
+   }
+
+   bool base_tester::is_code_cached( eosio::chain::account_name name ) const {
+      const auto& db  = control->db();
+      const account_metadata_object* receiver_account = &db.template get<account_metadata_object,by_name>( name );
+      if ( receiver_account->code_hash == digest_type() ) return false;
+      return control->get_wasm_interface().is_code_cached( receiver_account->code_hash, receiver_account->vm_type, receiver_account->vm_version );
    }
 
 
@@ -1052,7 +1093,7 @@ namespace eosio { namespace testing {
                auto bsf = b.control->create_block_state_future( block->calculate_id(), block );
                b.control->abort_block();
                controller::block_report br;
-               b.control->push_block(br, bsf, forked_branch_callback{}, trx_meta_cache_lookup{}); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(br, bsf.get(), forked_branch_callback{}, trx_meta_cache_lookup{}); //, eosio::chain::validation_steps::created_block);
             }
          }
       };
@@ -1063,17 +1104,17 @@ namespace eosio { namespace testing {
 
    void base_tester::set_before_preactivate_bios_contract() {
       set_code(config::system_account_name, contracts::before_preactivate_eosio_bios_wasm());
-      set_abi(config::system_account_name, contracts::before_preactivate_eosio_bios_abi().data());
+      set_abi(config::system_account_name, contracts::before_preactivate_eosio_bios_abi());
    }
 
    void base_tester::set_before_producer_authority_bios_contract() {
       set_code(config::system_account_name, contracts::before_producer_authority_eosio_bios_wasm());
-      set_abi(config::system_account_name, contracts::before_producer_authority_eosio_bios_abi().data());
+      set_abi(config::system_account_name, contracts::before_producer_authority_eosio_bios_abi());
    }
 
    void base_tester::set_bios_contract() {
       set_code(config::system_account_name, contracts::eosio_bios_wasm());
-      set_abi(config::system_account_name, contracts::eosio_bios_abi().data());
+      set_abi(config::system_account_name, contracts::eosio_bios_abi());
    }
 
 
@@ -1198,6 +1239,20 @@ namespace eosio { namespace testing {
       preactivate_protocol_features( preactivations );
    }
 
+   tester::tester(const std::function<void(controller&)>& control_setup, setup_policy policy, db_read_mode read_mode) {
+      auto def_conf            = default_config(tempdir);
+      def_conf.first.read_mode = read_mode;
+      cfg                      = def_conf.first;
+
+      base_tester::open(make_protocol_feature_set(), def_conf.second.compute_chain_id(),
+                        [&genesis = def_conf.second, &control = this->control, &control_setup]() {
+                           control_setup(*control);
+                           control->startup([]() {}, []() { return false; }, genesis);
+                        });
+
+      execute_setup_policy(policy);
+   }
+
    bool fc_exception_message_is::operator()( const fc::exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
       bool match = (message == expected);
@@ -1210,6 +1265,15 @@ namespace eosio { namespace testing {
    bool fc_exception_message_starts_with::operator()( const fc::exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
       bool match = boost::algorithm::starts_with( message, expected );
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool fc_exception_message_contains::operator()( const fc::exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = message.find(expected) != std::string::npos;
       if( !match ) {
          BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
       }

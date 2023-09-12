@@ -15,6 +15,8 @@ from sys import stdout
 from sys import exit
 import traceback
 import shutil
+import sys
+from pathlib import Path
 
 ###########################################################################################
 
@@ -54,24 +56,28 @@ class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
 
-    EosClientPath="programs/cleos/cleos"
+    testBinPath = Path(__file__).resolve().parents[2] / 'bin'
+
+    EosClientPath=str(testBinPath / "cleos")
     MiscEosClientArgs="--no-auto-keosd"
 
+    LeapClientPath=str(testBinPath / "leap-util")
+
     EosWalletName="keosd"
-    EosWalletPath="programs/keosd/"+ EosWalletName
+    EosWalletPath=str(testBinPath / EosWalletName)
 
     EosServerName="nodeos"
-    EosServerPath="programs/nodeos/"+ EosServerName
+    EosServerPath=str(testBinPath / EosServerName)
 
-    EosLauncherPath="programs/eosio-launcher/eosio-launcher"
     ShuttingDown=False
 
-    EosBlockLogPath="programs/eosio-blocklog/eosio-blocklog"
-
     FileDivider="================================================================="
-    DataRoot="var"
-    DataDir="%s/lib/" % (DataRoot)
-    ConfigDir="etc/eosio/"
+    TestLogRoot=f"{str(Path.cwd().resolve())}/TestLogs"
+    DataRoot=os.path.basename(sys.argv[0]).rsplit('.',maxsplit=1)[0]
+    PID = os.getpid()
+    DataPath= f"{TestLogRoot}/{DataRoot}{PID}"
+    DataDir=f"{DataPath}/"
+    ConfigDir=f"{DataPath}/"
 
     TimeFmt='%Y-%m-%dT%H:%M:%S.%f'
 
@@ -82,13 +88,18 @@ class Utils:
     @staticmethod
     def checkOutputFileWrite(time, cmd, output, error):
         stop=Utils.timestamp()
+        if not os.path.isdir(Utils.TestLogRoot):
+            if Utils.Debug: Utils.Print("TestLogRoot creating dir %s in dir: %s" % (Utils.TestLogRoot, os.getcwd()))
+            os.mkdir(Utils.TestLogRoot)
+        if not os.path.isdir(Utils.DataPath):
+            if Utils.Debug: Utils.Print("DataPath creating dir %s in dir: %s" % (Utils.DataPath, os.getcwd()))
+            os.mkdir(Utils.DataPath)
         if not hasattr(Utils, "checkOutputFile"):
-            if not os.path.isdir(Utils.DataRoot):
-                if Utils.Debug: Utils.Print("creating dir %s in dir: %s" % (Utils.DataRoot, os.getcwd()))
-                os.mkdir(Utils.DataRoot)
-            filename="%s/subprocess_results.log" % (Utils.DataRoot)
-            if Utils.Debug: Utils.Print("opening %s in dir: %s" % (filename, os.getcwd()))
-            Utils.checkOutputFile=open(filename,"w")
+            Utils.checkOutputFilename=f"{Utils.DataPath}/subprocess_results.log"
+            if Utils.Debug: Utils.Print("opening %s in dir: %s" % (Utils.checkOutputFilename, os.getcwd()))
+            Utils.checkOutputFile=open(Utils.checkOutputFilename,"w")
+        else:
+            Utils.checkOutputFile=open(Utils.checkOutputFilename,"a")
 
         Utils.checkOutputFile.write(Utils.FileDivider + "\n")
         Utils.checkOutputFile.write("start={%s}\n" % (time))
@@ -150,11 +161,13 @@ class Utils:
         return path
 
     @staticmethod
-    def rmNodeDataDir(ext, rmState=True, rmBlocks=True):
+    def rmNodeDataDir(ext, rmState=True, rmBlocks=True, rmStateHist=True):
         if rmState:
             shutil.rmtree(Utils.getNodeDataDir(ext, "state"))
         if rmBlocks:
             shutil.rmtree(Utils.getNodeDataDir(ext, "blocks"))
+        if rmStateHist:
+            shutil.rmtree(Utils.getNodeDataDir(ext, "state-history"), ignore_errors=True)
 
     @staticmethod
     def getNodeConfigDir(ext, relativeDir=None, trailingSlash=False):
@@ -205,7 +218,7 @@ class Utils:
         Utils.checkOutputFileWrite(start, cmd, output, error)
         if popen.returncode != 0 and not ignoreError:
             raise subprocess.CalledProcessError(returncode=popen.returncode, cmd=cmd, output=output, stderr=error)
-        return output.decode("utf-8")
+        return output.decode("utf-8") if popen.returncode == 0 else error.decode("utf-8")
 
     @staticmethod
     def errorExit(msg="", raw=False, errorCode=1):
@@ -222,7 +235,7 @@ class Utils:
         Utils.Print(msg)
 
     @staticmethod
-    def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
+    def waitForObj(lam, timeout=None, sleepTime=1, reporter=None):
         if timeout is None:
             timeout=60
 
@@ -250,13 +263,13 @@ class Utils:
         return None
 
     @staticmethod
-    def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
+    def waitForBool(lam, timeout=None, sleepTime=1, reporter=None):
         myLam = lambda: True if lam() else None
         ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
         return False if ret is None else ret
 
     @staticmethod
-    def waitForBoolWithArg(lam, arg, timeout=None, sleepTime=3, reporter=None):
+    def waitForBoolWithArg(lam, arg, timeout=None, sleepTime=1, reporter=None):
         myLam = lambda: True if lam(arg, timeout) else None
         ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
         return False if ret is None else ret
@@ -304,13 +317,13 @@ class Utils:
         return Utils.toJson(retStr)
 
     @staticmethod
-    def runCmdReturnStr(cmd, trace=False):
+    def runCmdReturnStr(cmd, trace=False, ignoreError=False):
         cmdArr=shlex.split(cmd)
-        return Utils.runCmdArrReturnStr(cmdArr)
+        return Utils.runCmdArrReturnStr(cmdArr, ignoreError=ignoreError)
 
     @staticmethod
-    def runCmdArrReturnStr(cmdArr, trace=False):
-        retStr=Utils.checkOutput(cmdArr)
+    def runCmdArrReturnStr(cmdArr, trace=False, ignoreError=False):
+        retStr=Utils.checkOutput(cmdArr, ignoreError=ignoreError)
         if trace: Utils.Print ("RAW > %s" % (retStr))
         return retStr
 
@@ -318,6 +331,40 @@ class Utils:
     def runCmdReturnJson(cmd, trace=False, silentErrors=False):
         cmdArr=shlex.split(cmd)
         return Utils.runCmdArrReturnJson(cmdArr, trace=trace, silentErrors=silentErrors)
+
+    @staticmethod
+    def processLeapUtilCmd(cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None):
+        cmd="%s %s" % (Utils.LeapClientPath, cmd)
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        if exitMsg is not None:
+            exitMsg="Context: " + exitMsg
+        else:
+            exitMsg=""
+        output=None
+        start=time.perf_counter()
+        try:
+            output=Utils.runCmdReturnStr(cmd)
+
+            if Utils.Debug:
+                end=time.perf_counter()
+                Utils.Print("cmd Duration: %.3f sec" % (end-start))
+        except subprocess.CalledProcessError as ex:
+            if not silentErrors:
+                end=time.perf_counter()
+                msg=ex.stderr.decode("utf-8")
+                errorMsg="Exception during \"%s\". Exception message: %s.  cmd Duration=%.3f sec. %s" % (cmdDesc, msg, end-start, exitMsg)
+                if exitOnError:
+                    Utils.cmdError(errorMsg)
+                    Utils.errorExit(errorMsg)
+                else:
+                    Utils.Print("ERROR: %s" % (errorMsg))
+            return None
+
+        if exitOnError and output is None:
+            Utils.cmdError("could not \"%s\". %s" % (cmdDesc,exitMsg))
+            Utils.errorExit("Failed to \"%s\"" % (cmdDesc))
+
+        return output
 
     @staticmethod
     def arePortsAvailable(ports):
@@ -372,18 +419,18 @@ class Utils:
         blockLogActionStr=None
         returnType=ReturnType.raw
         if blockLogAction==BlockLogAction.return_blocks:
-            blockLogActionStr=""
+            blockLogActionStr=" print-log --as-json-array "
             returnType=ReturnType.json
         elif blockLogAction==BlockLogAction.make_index:
-            blockLogActionStr=" --make-index "
+            blockLogActionStr=" make-index "
         elif blockLogAction==BlockLogAction.trim:
-            blockLogActionStr=" --trim "
+            blockLogActionStr=" trim-blocklog "
         elif blockLogAction==BlockLogAction.smoke_test:
-            blockLogActionStr=" --smoke-test "
+            blockLogActionStr=" smoke-test "
         else:
             unhandledEnumType(blockLogAction)
 
-        cmd="%s --blocks-dir %s --as-json-array %s%s%s%s" % (Utils.EosBlockLogPath, blockLogLocation, outputFileStr, firstStr, lastStr, blockLogActionStr)
+        cmd="%s block-log %s --blocks-dir %s  %s%s%s" % (Utils.LeapClientPath, blockLogActionStr, blockLogLocation, outputFileStr, firstStr, lastStr)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         rtn=None
         try:
@@ -473,6 +520,27 @@ class Utils:
         return "comparison of %s type is not supported, context=%s" % (typeName,context)
 
     @staticmethod
+    def compareFiles(file1: str, file2: str):
+        f1 = open(file1)
+        f2 = open(file2)
+
+        i = 0
+        same = True
+        for line1 in f1:
+            i += 1
+            for line2 in f2:
+                if line1 != line2:
+                    if Utils.Debug: Utils.Print("Diff line ", i, ":")
+                    if Utils.Debug: Utils.Print("\tFile 1: ", line1)
+                    if Utils.Debug: Utils.Print("\tFile 2: ", line2)
+                    same = False
+                break
+
+        f1.close()
+        f2.close()
+        return same
+
+    @staticmethod
     def addAmount(assetStr: str, deltaStr: str) -> str:
         asset = assetStr.split()
         if len(asset) != 2:
@@ -498,11 +566,11 @@ class Utils:
 
     @staticmethod
     def makeHTTPReqStr(host : str, port : str, api_call : str, body : str, keepAlive=False) -> str:
-        hdr = "POST " + api_call + " HTTP/1.1\r\n" 
+        hdr = "POST " + api_call + " HTTP/1.1\r\n"
         hdr += f"Host: {host}:{port}\r\n"
         body += "\r\n"
         body_len = len(body)
-        hdr +=  f"content-length: {body_len}\r\n" 
+        hdr +=  f"content-length: {body_len}\r\n"
         hdr +=  "Accept: */*\r\n"
         hdr += "Connection: "
         if keepAlive:
@@ -539,24 +607,9 @@ class Utils:
     def readSocketDataStr(sock : socket.socket, maxMsgSize : int, enc : str) -> str:
         """Read data from a socket until maxMsgSize is reached or timeout
         Retrusn data as decoded string object"""
-        data = Utils.readSocketData(sock, maxMsgSize) 
+        data = Utils.readSocketData(sock, maxMsgSize)
         return data.decode(enc)
-        
 
-
-###########################################################################################
-class Account(object):
-    # pylint: disable=too-few-public-methods
-
-    def __init__(self, name):
-        self.name=name
-
-        self.ownerPrivateKey=None
-        self.ownerPublicKey=None
-        self.activePrivateKey=None
-        self.activePublicKey=None
-
-
-    def __str__(self):
-        return "Name: %s" % (self.name)
-
+    @staticmethod
+    def getNodeosVersion():
+        return os.popen(f"{Utils.EosServerPath} --version").read().replace("\n", "")

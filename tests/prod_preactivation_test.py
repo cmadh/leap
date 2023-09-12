@@ -9,40 +9,34 @@ from TestHarness.Cluster import PFSetupPolicy
 
 ###############################################################
 # prod_preactivation_test
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
+# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and prod_preactivation_test<pid>/node_*/stderr.log to stdout>
+# --keep-logs <Don't delete TestLogs/prod_preactivation_test<pid>/node_* folders upon test completion>
 ###############################################################
 
 Print=Utils.Print
 errorExit=Utils.errorExit
 cmdError=Utils.cmdError
-from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--host","--port","--defproducera_prvt_key","--defproducerb_prvt_key"
-                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
-                              ,"--sanity-test","--wallet-port"})
+                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios"
+                              ,"--sanity-test","--wallet-port","--unshared"})
 server=args.host
 port=args.port
 debug=args.v
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
-keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
-dontKill=args.leave_running
 prodCount=2
 onlyBios=args.only_bios
-killAll=args.clean_run
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
 
 Utils.Debug=debug
 localTest=True
-cluster=Cluster(host=server, port=port, walletd=True, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+cluster=Cluster(host=server, port=port, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, unshared=args.unshared, keepRunning=args.leave_running, keepLogs=args.keep_logs)
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
-killEosInstances=not dontKill
-killWallet=not dontKill
 dontBootstrap=sanityTest
 
 WalletdName=Utils.EosWalletName
@@ -55,11 +49,9 @@ try:
     Print("PORT: %d" % (port))
 
     if localTest and not dontLaunch:
-        cluster.killall(allInstances=killAll)
-        cluster.cleanup()
         Print("Stand up cluster")
         if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=1, onlyBios=onlyBios,
-                         dontBootstrap=dontBootstrap, useBiosBootFile=False,
+                         dontBootstrap=dontBootstrap,
                          pfSetupPolicy=PFSetupPolicy.NONE, extraNodeosArgs=" --plugin eosio::producer_api_plugin  --http-max-response-time-ms 990000 ") is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
@@ -68,14 +60,14 @@ try:
     cluster.validateAccounts(None)
 
     node = cluster.getNode(0)
-    cmd = "curl %s/v1/producer/get_supported_protocol_features" % (node.endpointHttp)
-    Print("try to get supported feature list from Node 0 with cmd: %s" % (cmd))
-    feature0=Utils.runCmdReturnJson(cmd)
+    resource = "producer"
+    command = "get_supported_protocol_features"
+    Print("try to get supported feature list from Node 0 with cmd: %s" % (command))
+    feature0 = node.processUrllibRequest(resource, command)
 
     node = cluster.getNode(1)
-    cmd = "curl %s/v1/producer/get_supported_protocol_features" % (node.endpointHttp)
-    Print("try to get supported feature list from Node 1 with cmd: %s" % (cmd))
-    feature1=Utils.runCmdReturnJson(cmd)
+    Print("try to get supported feature list from Node 1 with cmd: %s" % (command))
+    feature1 = node.processUrllibRequest(resource, command)
 
     if feature0 != feature1:
         errorExit("feature list mismatch between node 0 and node 1")
@@ -86,8 +78,8 @@ try:
         errorExit("No supported feature list")
 
     digest = ""
-    for i in range(0, len(feature0)):
-       feature = feature0[i]
+    for i in range(0, len(feature0["payload"])):
+       feature = feature0["payload"][i]
        if feature["specification"][0]["value"] != "PREACTIVATE_FEATURE":
            continue
        else:
@@ -100,7 +92,7 @@ try:
 
     node0 = cluster.getNode(0)
     contract="eosio.bios"
-    contractDir="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (contract)
+    contractDir="libraries/testing/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (contract)
     wasmFile="%s.wasm" % (contract)
     abiFile="%s.abi" % (contract)
 
@@ -133,13 +125,14 @@ try:
 
     if secwait <= 0:
        errorExit("No producer of node 0")
+    resource = "producer"
+    command = "schedule_protocol_feature_activations"
+    payload = {"protocol_features_to_activate":[digest]}
 
-    cmd = "curl --data-binary '{\"protocol_features_to_activate\":[\"%s\"]}' %s/v1/producer/schedule_protocol_feature_activations" % (digest, node.endpointHttp)
+    Print("try to preactivate feature on node 1, cmd: /v1/%s/%s %s" % (resource, command, payload))
+    result = node.processUrllibRequest(resource, command, payload)
 
-    Print("try to preactivate feature on node 1, cmd: %s" % (cmd))
-    result = Utils.runCmdReturnJson(cmd)
-
-    if result["result"] != "ok":
+    if result["payload"]["result"] != "ok":
         errorExit("failed to preactivate feature from producer plugin on node 1")
     else:
         Print("feature PREACTIVATE_FEATURE (%s) preactivation success" % (digest))
@@ -168,7 +161,7 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, dumpErrorDetails)
 
 exitCode = 0 if testSuccessful else 1
 exit(exitCode)

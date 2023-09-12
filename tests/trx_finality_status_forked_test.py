@@ -7,7 +7,7 @@ import math
 import re
 import signal
 
-from TestHarness import Account, Cluster, Node, TestHelper, Utils, WalletMgr
+from TestHarness import Account, Cluster, Node, TestHelper, Utils, WalletMgr, CORE_SYMBOL
 from TestHarness.Node import BlockType
 
 ###############################################################
@@ -20,28 +20,21 @@ from TestHarness.Node import BlockType
 Print=Utils.Print
 errorExit=Utils.errorExit
 
-from core_symbol import CORE_SYMBOL
 
-
-args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
-                              "--wallet-port"})
+args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running",
+                              "--wallet-port","--unshared"})
 Utils.Debug=args.v
 totalProducerNodes=2
 totalNonProducerNodes=1
 totalNodes=totalProducerNodes+totalNonProducerNodes
 maxActiveProducers=3
 totalProducers=maxActiveProducers
-cluster=Cluster(walletd=True)
+cluster=Cluster(unshared=args.unshared, keepRunning=args.leave_running, keepLogs=args.keep_logs)
 dumpErrorDetails=args.dump_error_details
-keepLogs=args.keep_logs
-dontKill=args.leave_running
-killAll=args.clean_run
 walletPort=args.wallet_port
 
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
-killEosInstances=not dontKill
-killWallet=not dontKill
 
 WalletdName=Utils.EosWalletName
 ClientName="cleos"
@@ -53,8 +46,6 @@ try:
     TestHelper.printSystemInfo("BEGIN")
 
     cluster.setWalletMgr(walletMgr)
-    cluster.killall(allInstances=killAll)
-    cluster.cleanup()
     Print("Stand up cluster")
     specificExtraNodeosArgs={}
     # producer nodes will be mapped to 0 through totalProducerNodes-1, so the number totalProducerNodes will be the non-producing node
@@ -74,7 +65,7 @@ try:
     # and the only connection between those 2 groups is through the bridge node
     if cluster.launch(prodCount=2, topo="bridge", pnodes=totalProducerNodes,
                       totalNodes=totalNodes, totalProducers=totalProducers,
-                      useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs,
+                      specificExtraNodeosArgs=specificExtraNodeosArgs,
                       extraNodeosArgs=extraNodeosArgs) is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
@@ -118,7 +109,7 @@ try:
     cluster.validateAccounts([account1])
 
     # ***   Killing the "bridge" node   ***
-    Print("Sending command to kill \"bridge\" node to separate the 2 producer groups.")
+    Print('Sending command to kill "bridge" node to separate the 2 producer groups.')
     # kill at the beginning of the production window for defproducera, so there is time for the fork for
     # defproducerc to grow before it would overtake the fork for defproducera and defproducerb
     killAtProducer="defproducera"
@@ -145,7 +136,8 @@ try:
         return status["state"]
 
     transferAmount = 10
-    prodC.transferFunds(cluster.eosioAccount, account1, f"{transferAmount}.0000 {CORE_SYMBOL}", "fund account")
+    transfer = prodC.transferFunds(cluster.eosioAccount, account1, f"{transferAmount}.0000 {CORE_SYMBOL}", "fund account")
+    transBlockNum = transfer['processed']['block_num']
     transId = prodC.getLastTrackedTransactionId()
     retStatus = prodC.getTransactionStatus(transId)
     state = getState(retStatus)
@@ -164,7 +156,6 @@ try:
     # since the Bridge node is killed when this producer is producing its last block in its window, there is plenty of time for the transfer to be
     # sent before the first block is created, but adding this to ensure it is in one of these blocks
     numTries = 2
-    preInfo = prodC.getInfo()
     while numTries > 0:
         retStatus = prodC.getTransactionStatus(transId)
         state = getState(retStatus)
@@ -172,8 +163,6 @@ try:
             break
         numTries -= 1
         assert prodC.waitForNextBlock(), "Production node C should continue to advance, even after bridge node is killed"
-
-    postInfo = prodC.getInfo()
 
     Print(f"getTransactionStatus returned status: {json.dumps(retStatus, indent=1)}")
     assert state == inBlockState, \
@@ -185,9 +174,12 @@ try:
     if not nonProdNode.relaunch():
         errorExit(f"Failure - (non-production) node {nonProdNode.nodeNum} should have restarted")
 
-    Print("Wait for LIB to move, which indicates prodC has forked out the branch")
-    assert prodC.waitForLibToAdvance(), \
-        "ERROR: Network did not reach consensus after bridge node was restarted."
+    while prodC.getInfo()['last_irreversible_block_num'] < transBlockNum:
+        Print("Wait for LIB to move, which indicates prodC may have forked out the branch")
+        assert prodC.waitForLibToAdvance(60), \
+            "ERROR: Network did not reach consensus after bridge node was restarted."
+        if prodC.getTransactionStatus(transId)['state'] == forkedOutState:
+            break
 
     retStatus = prodC.getTransactionStatus(transId)
     state = getState(retStatus)
@@ -236,7 +228,7 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killWallet, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, dumpErrorDetails=dumpErrorDetails)
 
 errorCode = 0 if testSuccessful else 1
 exit(errorCode)

@@ -3,7 +3,6 @@
 import random
 
 from TestHarness import Account, Cluster, ReturnType, TestHelper, Utils, WalletMgr
-from core_symbol import CORE_SYMBOL
 
 ###############################################################
 # get_account_test
@@ -17,7 +16,7 @@ errorExit=Utils.errorExit
 
 args=TestHelper.parse_args({"-p","-n","-d","-s","--nodes-file","--seed"
                             ,"--dump-error-details","-v","--leave-running"
-                            ,"--clean-run","--keep-logs"})
+                            ,"--keep-logs","--unshared"})
 
 pnodes=args.p
 topo=args.s
@@ -27,21 +26,13 @@ debug=args.v
 nodesFile=args.nodes_file
 dontLaunch=nodesFile is not None
 seed=args.seed
-dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
-killAll=args.clean_run
-keepLogs=args.keep_logs
-
-killWallet=not dontKill
-killEosInstances=not dontKill
-if nodesFile is not None:
-    killEosInstances=False
 
 Utils.Debug=debug
 testSuccessful=False
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=Cluster(walletd=True)
+cluster=Cluster(unshared=args.unshared, keepRunning=True if nodesFile is not None else args.leave_running, keepLogs=args.keep_logs)
 
 walletMgr=WalletMgr(True)
 EOSIO_ACCT_PRIVATE_DEFAULT_KEY = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
@@ -56,14 +47,9 @@ try:
             errorExit("Failed to initilize nodes from Json string.")
         total_nodes=len(cluster.getNodes())
 
-        walletMgr.killall(allInstances=killAll)
-        walletMgr.cleanup()
         print("Stand up walletd")
         if walletMgr.launch() is False:
             errorExit("Failed to stand up keosd.")
-        else:
-            cluster.killall(allInstances=killAll)
-            cluster.cleanup()
 
     Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" % (pnodes, total_nodes-pnodes, topo, delay))
 
@@ -98,7 +84,7 @@ try:
 
     testSuccessful = True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, dumpErrorDetails)
 
 errorCode = 0 if testSuccessful else 1
 exit(errorCode)

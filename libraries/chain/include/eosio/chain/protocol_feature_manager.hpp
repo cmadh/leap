@@ -35,6 +35,7 @@ enum class builtin_protocol_feature_t : uint32_t {
    configurable_wasm_limits = 18, // configurable_wasm_limits2,
    crypto_primitives = 19,
    get_block_num = 20,
+   bls_primitives = 21,
    reserved_private_fork_protocol_features = 500000,
 };
 
@@ -264,7 +265,11 @@ protected:
 class protocol_feature_manager {
 public:
 
+<<<<<<< HEAD
    protocol_feature_manager( protocol_feature_set&& pfs, std::function<deep_mind_handler_base*()> get_deep_mind_logger );
+=======
+   protocol_feature_manager( protocol_feature_set&& pfs, std::function<deep_mind_handler*(bool is_trx_transient)> get_deep_mind_logger );
+>>>>>>> main
 
    class const_iterator {
    public:
@@ -393,8 +398,15 @@ protected:
    bool                                   _initialized = false;
 
 private:
+<<<<<<< HEAD
    std::function<deep_mind_handler_base*()>           _get_deep_mind_logger;
+=======
+   std::function<deep_mind_handler*(bool is_trx_transient)> _get_deep_mind_logger;
+>>>>>>> main
 };
+
+std::optional<builtin_protocol_feature> read_builtin_protocol_feature( const std::filesystem::path& p  );
+protocol_feature_set initialize_protocol_features( const std::filesystem::path& p, bool populate_missing_builtins = true );
 
 } } // namespace eosio::chain
 

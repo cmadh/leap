@@ -12,18 +12,22 @@ class sha256
 {
   public:
     sha256();
-    explicit sha256( const string& hex_str );
+    explicit sha256( const std::string& hex_str );
     explicit sha256( const char *data, size_t size );
 
-    string str()const;
-    operator string()const;
+    std::string str()const;
+    operator std::string()const;
 
     const char* data()const;
     char*       data();
     size_t      data_size() const { return 256 / 8; }
 
+    bool empty()const {
+       return (_hash[0] | _hash[1] | _hash[2] | _hash[3]) == 0;
+    }
+
     static sha256 hash( const char* d, uint32_t dlen );
-    static sha256 hash( const string& );
+    static sha256 hash( const std::string& );
     static sha256 hash( const sha256& );
 
     template<typename T>

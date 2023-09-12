@@ -1,17 +1,10 @@
-#define BOOST_TEST_MODULE account_query_db
+#include <boost/test/unit_test.hpp>
 #include <eosio/chain/permission_object.hpp>
-#include <boost/test/included/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain_plugin/account_query_db.hpp>
 #include <eosio/chain/thread_utils.hpp>
-
-#ifdef NON_VALIDATING_TEST
-#define TESTER tester
-#else
-#define TESTER validating_tester
-#endif
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -39,7 +32,7 @@ bool find_account_auth(results rst, account_name name, permission_name perm){
 
 BOOST_AUTO_TEST_SUITE(account_query_db_tests)
 
-BOOST_FIXTURE_TEST_CASE(newaccount_test, TESTER) { try {
+BOOST_FIXTURE_TEST_CASE(newaccount_test, validating_tester) { try {
 
    // instantiate an account_query_db
    auto aq_db = account_query_db(*control);
@@ -64,7 +57,7 @@ BOOST_FIXTURE_TEST_CASE(newaccount_test, TESTER) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
+BOOST_FIXTURE_TEST_CASE(updateauth_test, validating_tester) { try {
 
     // instantiate an account_query_db
     auto aq_db = account_query_db(*control);
@@ -98,7 +91,7 @@ BOOST_FIXTURE_TEST_CASE(updateauth_test, TESTER) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(updateauth_test_multi_threaded, TESTER) { try {
+BOOST_FIXTURE_TEST_CASE(updateauth_test_multi_threaded, validating_tester) { try {
 
    // instantiate an account_query_db
    auto aq_db = account_query_db(*control);
@@ -114,8 +107,8 @@ BOOST_FIXTURE_TEST_CASE(updateauth_test_multi_threaded, TESTER) { try {
    const string role = "first";
    produce_block();
    create_account(tester_account);
-
-   named_thread_pool thread_pool( "test", 5 );
+   named_thread_pool<struct test> thread_pool;
+   thread_pool.start( 5, {} );
 
    for( size_t i = 0; i < 100; ++i ) {
       boost::asio::post( thread_pool.get_executor(), [&aq_db, tester_account, role]() {
@@ -191,7 +184,7 @@ BOOST_AUTO_TEST_CASE(future_fork_test) { try {
 
    // ensure the account was forked away
    const auto post_results = aq_db.get_accounts_by_authorizers(pars);
-   BOOST_TEST_REQUIRE(post_results.accounts.size() == 0);
+   BOOST_TEST_REQUIRE(post_results.accounts.size() == 0u);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -284,7 +277,7 @@ BOOST_AUTO_TEST_CASE(fork_test) { try {
       const auto post_results = aq_db.get_accounts_by_authorizers(pars);
 
       // verify correct account is in results
-      BOOST_TEST_REQUIRE(post_results.accounts.size() == 1);
+      BOOST_TEST_REQUIRE(post_results.accounts.size() == 1u);
 
    } FC_LOG_AND_RETHROW() }
 

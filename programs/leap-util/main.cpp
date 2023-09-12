@@ -3,7 +3,7 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-#include <cli11/CLI11.hpp>
+#include <CLI/CLI.hpp>
 
 #include "actions/blocklog.hpp"
 #include "actions/chain.hpp"
@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
 
    app.set_help_all_flag("--help-all", "Show all help");
    app.failure_message(CLI::FailureMessage::help);
-   app.require_subcommand(1, 2);
+   app.require_subcommand();
 
    // generics sc tree
    auto generic_subcommand = std::make_shared<generic_actions>();
@@ -33,9 +33,9 @@ int main(int argc, char** argv) {
    auto blocklog_subcommand = std::make_shared<blocklog_actions>();
    blocklog_subcommand->setup(app);
 
-   // snapshot sc tree, reserved
-   // auto snapshot_subcommand = std::make_shared<snapshot_actions>();
-   // snapshot_subcommand->setup(app);
+   // snapshot sc tree
+   auto snapshot_subcommand = std::make_shared<snapshot_actions>();
+   snapshot_subcommand->setup(app);
 
    // chain subcommand from nodeos chain_plugin
    auto chain_subcommand = std::make_shared<chain_actions>();

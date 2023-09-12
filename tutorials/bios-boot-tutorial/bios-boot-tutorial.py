@@ -112,13 +112,13 @@ def startNode(nodeIndex, account):
         '    --config-dir ' + os.path.abspath(dir) +
         '    --data-dir ' + os.path.abspath(dir) +
         '    --chain-state-db-size-mb 1024'
-        '    --http-server-address 127.0.0.1:' + str(8000 + nodeIndex) +
+        '    --http-server-address 127.0.0.1:' + str(args.http_port + nodeIndex) +
         '    --p2p-listen-endpoint 127.0.0.1:' + str(9000 + nodeIndex) +
         '    --max-clients ' + str(maxClients) +
         '    --p2p-max-nodes-per-host ' + str(maxClients) +
         '    --enable-stale-production'
         '    --producer-name ' + account['name'] +
-        '    --private-key \'["' + account['pub'] + '","' + account['pvt'] + '"]\''
+        '    --signature-provider ' + account['pub'] + '=KEY:' + account['pvt'] +
         '    --plugin eosio::http_plugin'
         '    --plugin eosio::chain_api_plugin'
         '    --plugin eosio::chain_plugin'
@@ -280,9 +280,6 @@ def produceNewAccounts():
             print(i, name)
             f.write('        {"name":"%s", "pvt":"%s", "pub":"%s"},\n' % (name, r[1], r[2]))
 
-def stepKillAll():
-    run('killall keosd nodeos || true')
-    sleep(1.5)
 def stepStartWallet():
     startWallet()
     importKeys()
@@ -332,9 +329,9 @@ def stepSetSystemContract():
     retry(args.cleos + 'push action eosio activate \'["ad9e3d8f650687709fd68f4b90b41f7d825a365b02c23a636cef88ac2ac00c43"]\' -p eosio@active')
     # DISALLOW_EMPTY_PRODUCER_SCHEDULE
     retry(args.cleos + 'push action eosio activate \'["68dcaa34c0517d19666e6b33add67351d8c5f69e999ca1e37931bc410a297428"]\' -p eosio@active')
-     # FIX_LINKAUTH_RESTRICTION
+    # FIX_LINKAUTH_RESTRICTION
     retry(args.cleos + 'push action eosio activate \'["e0fb64b1085cc5538970158d05a009c24e276fb94e1a0bf6a528b48fbc4ff526"]\' -p eosio@active')
-     # REPLACE_DEFERRED
+    # REPLACE_DEFERRED
     retry(args.cleos + 'push action eosio activate \'["ef43112c6543b88db2283a2e077278c315ae2c84719a8b25f25cc88565fbea99"]\' -p eosio@active')
     # NO_DUPLICATE_DEFERRED_ID
     retry(args.cleos + 'push action eosio activate \'["4a90c00d55454dc5b059055ca213579c6ea856967712a56017487886a4d4cc0f"]\' -p eosio@active')
@@ -346,6 +343,12 @@ def stepSetSystemContract():
     retry(args.cleos + 'push action eosio activate \'["4fca8bd82bbd181e714e283f83e1b45d95ca5af40fb89ad3977b653c448f78c2"]\' -p eosio@active')
     # WTMSIG_BLOCK_SIGNATURES
     retry(args.cleos + 'push action eosio activate \'["299dcb6af692324b899b39f16d5a530a33062804e41f09dc97e9f156b4476707"]\' -p eosio@active')
+    # GET_CODE_HASH
+    retry(args.cleos + 'push action eosio activate \'["bcd2a26394b36614fd4894241d3c451ab0f6fd110958c3423073621a70826e99"]\' -p eosio@active')
+    # GET_BLOCK_NUM
+    retry(args.cleos + 'push action eosio activate \'["35c2186cc36f7bb4aeaf4487b36e57039ccf45a9136aa856a5d569ecca55ef2b"]\' -p eosio@active')
+    # CRYPTO_PRIMITIVES
+    retry(args.cleos + 'push action eosio activate \'["6bcb40a24e49c26d0a60513b6aeb8551d264e4717f306b81a37a5afb3b47cedc"]\' -p eosio@active')
     sleep(1)
 
     # install eosio.system latest version
@@ -388,7 +391,6 @@ def stepLog():
 parser = argparse.ArgumentParser()
 
 commands = [
-    ('k', 'kill',               stepKillAll,                True,    "Kill all nodeos and keosd processes"),
     ('w', 'wallet',             stepStartWallet,            True,    "Start keosd, create wallet, fill with keys"),
     ('b', 'boot',               stepStartBoot,              True,    "Start boot node"),
     ('s', 'sys',                createSystemAccounts,       True,    "Create system accounts (eosio.*)"),

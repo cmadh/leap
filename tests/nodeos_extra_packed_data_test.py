@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 
-import decimal
-import re
 import json
-import os
 import copy
-import math
-import time
 
-from TestHarness import Account, Cluster, Node, ReturnType, TestHelper, Utils, WalletMgr
+from TestHarness import Cluster, TestHelper, Utils, WalletMgr, CORE_SYMBOL, createAccountKeys
 from TestHarness.Cluster import PFSetupPolicy
 from TestHarness.TestHelper import AppArgs
 
@@ -22,22 +17,19 @@ from TestHarness.TestHelper import AppArgs
 Print=Utils.Print
 errorExit=Utils.errorExit
 cmdError=Utils.cmdError
-from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--host","--port","-p","--defproducera_prvt_key","--defproducerb_prvt_key"
-                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--clean-run"
-                              ,"--sanity-test","--wallet-port"})
+                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running"
+                              ,"--sanity-test","--wallet-port","--unshared"})
 server=args.host
 port=args.port
 debug=args.v
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
-keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
-dontKill=args.leave_running
 pnodes=args.p
-killAll=args.clean_run
+totalNodes=pnodes+1
 sanityTest=args.sanity_test
 walletPort=args.wallet_port
 
@@ -45,13 +37,13 @@ Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
 cluster=Cluster(host=server, 
                 port=port, 
-                walletd=True,
                 defproduceraPrvtKey=defproduceraPrvtKey, 
-                defproducerbPrvtKey=defproducerbPrvtKey)
+                defproducerbPrvtKey=defproducerbPrvtKey,
+                unshared=args.unshared,
+                keepRunning=args.leave_running,
+                keepLogs=args.keep_logs)
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
-killEosInstances=not dontKill
-killWallet=not dontKill
 dontBootstrap=sanityTest # intent is to limit the scope of the sanity test to just verifying that nodes can be started
 
 WalletdName=Utils.EosWalletName
@@ -66,8 +58,6 @@ try:
     Print("PORT: %d" % (port))
 
     if localTest and not dontLaunch:
-        cluster.killall(allInstances=killAll)
-        cluster.cleanup()
         Print("Stand up cluster")
         specificExtraNodeosArgs = {}
         associatedNodeLabels = {}
@@ -76,7 +66,7 @@ try:
         if pnodes > 3:
             specificExtraNodeosArgs[pnodes - 2] = ""
 
-        if cluster.launch(totalNodes=pnodes, 
+        if cluster.launch(totalNodes=totalNodes, 
                           pnodes=pnodes,
                           dontBootstrap=dontBootstrap,
                           pfSetupPolicy=PFSetupPolicy.PREACTIVATE_FEATURE_ONLY,
@@ -87,10 +77,7 @@ try:
     else:
         Print("Collecting cluster info.")
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
-        killEosInstances=False
         Print("Stand up %s" % (WalletdName))
-        walletMgr.killall(allInstances=killAll)
-        walletMgr.cleanup()
         print("Stand up walletd")
         if walletMgr.launch() is False:
             cmdError("%s" % (WalletdName))
@@ -103,7 +90,7 @@ try:
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
-    accounts=Cluster.createAccountKeys(2)
+    accounts=createAccountKeys(2)
     if accounts is None:
         errorExit("FAILURE - create keys")
     testeraAccount=accounts[0]
@@ -128,12 +115,13 @@ try:
             errorExit("Failed to import key for account %s" % (account.name))
     
     node=cluster.getNode(0)
+    nonProdNode=cluster.getAllNodes()[-1]
 
     Print("Create new account %s via %s" % (testeraAccount.name, cluster.defproduceraAccount.name))
     transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
     Print("Create new account %s via %s" % (testerbAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(testerbAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
+    transId=nonProdNode.createInitializeAccount(testerbAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
 
     Print("Validating accounts after user accounts creation")
     accounts=[testeraAccount, testerbAccount]
@@ -163,9 +151,9 @@ try:
         packedTrx["packed_trx"] = packed_trx_param + "00000000"
 
         exitMsg = "failed to send packed transaction: %s" % (packedTrx)
-        sentTrx = node.processCurlCmd("chain", "send_transaction", json.dumps(packedTrx), silentErrors=False, exitOnError=True, exitMsg=exitMsg)
+        sentTrx = node.processUrllibRequest("chain", "send_transaction", packedTrx, silentErrors=False, exitOnError=True, exitMsg=exitMsg)
         Print("sent transaction json: %s" % (sentTrx))
-        trx_id = sentTrx["transaction_id"]
+        trx_id = sentTrx["payload"]["transaction_id"]
         postedTrxs.append(trx_id)
 
     assert len(postedTrxs) == trxNumber, Print("posted transactions number %d doesn't match %d" % (len(postedTrxs), trxNumber))
@@ -187,4 +175,7 @@ try:
     
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, dumpErrorDetails)
+
+errorCode = 0 if testSuccessful else 1
+exit(errorCode)

@@ -56,12 +56,12 @@ namespace fc {
       }
    }
 
-   void dmlog_appender::initialize( boost::asio::io_service& io_service ) {}
+   void dmlog_appender::initialize() {}
 
    void dmlog_appender::log( const log_message& m ) {
       FILE* out = my->out;
 
-      string message = format_string( "DMLOG " + m.get_format() + "\n", m.get_data() );
+      std::string message = format_string( "DMLOG " + m.get_format() + "\n", m.get_data() );
 
       auto remaining_size = message.size();
       auto message_ptr = message.c_str();

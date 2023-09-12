@@ -3,13 +3,12 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/testing/tester.hpp>
 
-#include <Runtime/Runtime.h>
-
 #include <fc/variant_object.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include <contracts.hpp>
+#include <test_contracts.hpp>
 
 #include "fork_test_utilities.hpp"
 
@@ -27,16 +26,16 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
    // Cannot set latest bios contract since it requires intrinsics that have not yet been whitelisted.
    BOOST_CHECK_EXCEPTION( c.set_code( config::system_account_name, contracts::eosio_bios_wasm() ),
-                          wasm_exception, fc_exception_message_is("env.is_feature_activated unresolveable")
+                          wasm_exception, fc_exception_message_is("env.set_proposed_producers_ex unresolveable")
    );
 
    // But the old bios contract can still be set.
    c.set_code( config::system_account_name, contracts::before_preactivate_eosio_bios_wasm() );
-   c.set_abi( config::system_account_name, contracts::before_preactivate_eosio_bios_abi().data() );
+   c.set_abi( config::system_account_name, contracts::before_preactivate_eosio_bios_abi() );
 
    auto t = c.control->pending_block_time();
    c.control->abort_block();
-   BOOST_REQUIRE_EXCEPTION( c.control->start_block( t, 0, {digest_type()} ), protocol_feature_exception,
+   BOOST_REQUIRE_EXCEPTION( c.control->start_block( t, 0, {digest_type()}, controller::block_status::incomplete ), protocol_feature_exception,
                             fc_exception_message_is( "protocol feature with digest '0000000000000000000000000000000000000000000000000000000000000000' is unrecognized" )
    );
 
@@ -67,7 +66,7 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
    // Ensure validator node accepts the blockchain
 
-   tester c2(setup_policy::none, db_read_mode::SPECULATIVE);
+   tester c2(setup_policy::none, db_read_mode::HEAD);
    push_blocks( c, c2 );
 
 } FC_LOG_AND_RETHROW()
@@ -187,7 +186,8 @@ BOOST_AUTO_TEST_CASE( require_preactivation_test ) try {
    BOOST_CHECK_EXCEPTION( c.control->start_block(
                               c.control->head_block_time() + fc::milliseconds(config::block_interval_ms),
                               0,
-                              {}
+                              {},
+                              controller::block_status::incomplete
                           ),
                           block_validate_exception,
                           fc_exception_message_is( "There are pre-activated protocol features that were not activated at the start of this block" )
@@ -294,11 +294,11 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
    BOOST_CHECK_EXCEPTION(  c.produce_block(),
                            protocol_feature_exception,
                            fc_exception_message_starts_with(
-                              std::string(c.control->head_block_time()) +
+                              c.control->head_block_time().to_iso_string() +
                               " is too early for the earliest allowed activation time of the protocol feature"
                            )
    );
-   BOOST_CHECK_EQUAL( c.protocol_features_to_be_activated_wo_preactivation.size(), 1 );
+   BOOST_CHECK_EQUAL( c.protocol_features_to_be_activated_wo_preactivation.size(), 1u );
 
    // Revert to the valid earliest allowed activation time, however with enabled == false
    custom_subjective_restrictions = {
@@ -314,7 +314,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
                               "' is disabled"
                            )
    );
-   BOOST_CHECK_EQUAL( c.protocol_features_to_be_activated_wo_preactivation.size(), 1 );
+   BOOST_CHECK_EQUAL( c.protocol_features_to_be_activated_wo_preactivation.size(), 1u );
 
    // Revert to the valid earliest allowed activation time, however with subjective_restrictions enabled == true
    custom_subjective_restrictions = {
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
    // Now it should be fine, the feature should be activated after the block is produced
    BOOST_CHECK_NO_THROW( c.produce_block() );
    BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
-   BOOST_CHECK_EQUAL( c.protocol_features_to_be_activated_wo_preactivation.size(), 0 );
+   BOOST_CHECK_EQUAL( c.protocol_features_to_be_activated_wo_preactivation.size(), 0u );
 
    // Second, test subjective_restrictions on feature that need to be activated WITH preactivation (ONLY_LINK_TO_EXISTING_PERMISSION)
 
@@ -339,7 +339,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
    BOOST_CHECK_EXCEPTION(  c.preactivate_protocol_features({only_link_to_existing_permission_digest}),
                            subjective_block_production_exception,
                            fc_exception_message_starts_with(
-                              std::string(c.control->head_block_time() + fc::milliseconds(config::block_interval_ms)) +
+                              (c.control->head_block_time() + fc::milliseconds(config::block_interval_ms)).to_iso_string() +
                               " is too early for the earliest allowed activation time of the protocol feature"
                            )
    );
@@ -376,8 +376,8 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    c.preactivate_builtin_protocol_features( {builtin_protocol_feature_t::crypto_primitives} );
    c.produce_block();
    c.create_accounts( {"alice"_n, "bob"_n, "test"_n} );
-   c.set_code( "test"_n, contracts::deferred_test_wasm() );
-   c.set_abi( "test"_n, contracts::deferred_test_abi().data() );
+   c.set_code( "test"_n, test_contracts::deferred_test_wasm() );
+   c.set_abi( "test"_n, test_contracts::deferred_test_abi() );
    c.produce_block();
 
    auto alice_ram_usage0 = c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n );
@@ -412,6 +412,14 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    cfg.disable_all_subjective_mitigations = true;
    c.init( cfg );
 
+   transaction_trace_ptr trace;
+   auto h = c.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const packed_transaction_ptr&> x) {
+      auto& t = std::get<0>(x);
+      if( t && !eosio::chain::is_onblock(*t)) {
+         trace = t;
+      }
+   } );
+
    BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage0 );
 
    c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
@@ -423,7 +431,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
 
    BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
    auto dtrxs = c.get_scheduled_transactions();
-   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1u );
    auto first_dtrx_id = dtrxs[0];
 
    // With the subjective mitigation disabled, replacing the deferred transaction is allowed.
@@ -438,7 +446,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    BOOST_CHECK_EQUAL( alice_ram_usage2, alice_ram_usage1 + (alice_ram_usage1 - alice_ram_usage0) );
 
    dtrxs = c.get_scheduled_transactions();
-   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1u );
    BOOST_CHECK_EQUAL( first_dtrx_id, dtrxs[0] ); // Incorrectly kept as the old transaction ID.
 
    c.produce_block();
@@ -447,7 +455,9 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    BOOST_CHECK_EQUAL( alice_ram_usage3, alice_ram_usage1 );
 
    dtrxs = c.get_scheduled_transactions();
-   BOOST_CHECK_EQUAL( dtrxs.size(), 0 );
+   BOOST_CHECK_EQUAL( dtrxs.size(), 0u );
+   // must be equal before builtin_protocol_feature_t::replace_deferred to support replay of blocks before activation
+   BOOST_CHECK( first_dtrx_id.str() == trace->id.str() );
 
    c.produce_block();
 
@@ -475,7 +485,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
 
    dtrxs = c.get_scheduled_transactions();
-   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1u );
    auto first_dtrx_id2 = dtrxs[0];
 
    // With REPLACE_DEFERRED activated, replacing the deferred transaction is allowed and now should work properly.
@@ -489,7 +499,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
 
    dtrxs = c.get_scheduled_transactions();
-   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1u );
    BOOST_CHECK( first_dtrx_id2 != dtrxs[0] );
 
    // Replace again with a deferred transaction identical to the first one
@@ -504,8 +514,15 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( "alice"_n ), alice_ram_usage1 );
 
    dtrxs = c.get_scheduled_transactions();
-   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1u );
    BOOST_CHECK_EQUAL( first_dtrx_id2, dtrxs[0] );
+
+   c.produce_block();
+
+   dtrxs = c.get_scheduled_transactions();
+   BOOST_CHECK_EQUAL( dtrxs.size(), 0u );
+   // Not equal after builtin_protocol_feature_t::replace_deferred activated
+   BOOST_CHECK( first_dtrx_id2.str() != trace->id.str() );
 
 } FC_LOG_AND_RETHROW()
 
@@ -516,8 +533,8 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    c.preactivate_builtin_protocol_features( {builtin_protocol_feature_t::crypto_primitives} );
    c.produce_block();
    c.create_accounts( {"alice"_n, "test"_n} );
-   c.set_code( "test"_n, contracts::deferred_test_wasm() );
-   c.set_abi( "test"_n, contracts::deferred_test_abi().data() );
+   c.set_code( "test"_n, test_contracts::deferred_test_wasm() );
+   c.set_abi( "test"_n, test_contracts::deferred_test_abi() );
    c.produce_block();
 
    push_blocks( c, c2 );
@@ -565,18 +582,18 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
       }
    } );
 
-   BOOST_REQUIRE_EQUAL(0, index.size());
+   BOOST_REQUIRE_EQUAL(0u, index.size());
 
    c.push_action( config::system_account_name, "reqauth"_n, "alice"_n, fc::mutable_variant_object()
       ("from", "alice"),
       5, 2
    );
 
-   BOOST_REQUIRE_EQUAL(1, index.size());
+   BOOST_REQUIRE_EQUAL(1u, index.size());
 
    c.produce_block();
 
-   BOOST_REQUIRE_EQUAL(1, index.size());
+   BOOST_REQUIRE_EQUAL(1u, index.size());
 
    const auto& pfm = c.control->get_protocol_feature_manager();
 
@@ -591,21 +608,21 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
       ("contract", "test")
       ("payload", 42)
    );
-   BOOST_REQUIRE_EQUAL(2, index.size());
+   BOOST_REQUIRE_EQUAL(2u, index.size());
 
    c.preactivate_protocol_features( {*d1, *d2} );
    c.produce_block();
    // The deferred transaction with payload 42 that was scheduled prior to the activation of the protocol features should now be retired.
 
    BOOST_REQUIRE( trace1 );
-   BOOST_REQUIRE_EQUAL(1, index.size());
+   BOOST_REQUIRE_EQUAL(1u, index.size());
 
    trace1 = nullptr;
 
    // Retire the delayed eosio::reqauth transaction.
    c.produce_blocks(5);
    BOOST_REQUIRE( trace1 );
-   BOOST_REQUIRE_EQUAL(0, index.size());
+   BOOST_REQUIRE_EQUAL(0u, index.size());
 
    h.disconnect();
 
@@ -617,8 +634,8 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
       transaction trx;
       fc::datastream<const char*> ds1( data.data(), data.size() );
       fc::raw::unpack( ds1, trx );
-      BOOST_REQUIRE_EQUAL( trx.transaction_extensions.size(), 1 );
-      BOOST_REQUIRE_EQUAL( trx.transaction_extensions.back().first, 0 );
+      BOOST_REQUIRE_EQUAL( trx.transaction_extensions.size(), 1u );
+      BOOST_REQUIRE_EQUAL( trx.transaction_extensions.back().first, 0u );
 
       fc::datastream<const char*> ds2( trx.transaction_extensions.back().second.data(),
                                        trx.transaction_extensions.back().second.size() );
@@ -647,7 +664,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
       fc_exception_message_is( "deferred transaction generaction context contains mismatching sender" )
    );
 
-   BOOST_REQUIRE_EQUAL(0, index.size());
+   BOOST_REQUIRE_EQUAL(0u, index.size());
 
    auto trace2 = c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
@@ -656,7 +673,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
       ("payload", 40)
    );
 
-   BOOST_REQUIRE_EQUAL(1, index.size());
+   BOOST_REQUIRE_EQUAL(1u, index.size());
 
    check_generation_context( index.begin()->packed_trx,
                              trace2->id,
@@ -665,7 +682,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    c.produce_block();
 
-   BOOST_REQUIRE_EQUAL(0, index.size());
+   BOOST_REQUIRE_EQUAL(0u, index.size());
 
    auto trace3 = c.push_action( "test"_n, "defercall"_n, "alice"_n, fc::mutable_variant_object()
       ("payer", "alice")
@@ -674,7 +691,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
       ("payload", 50)
    );
 
-   BOOST_REQUIRE_EQUAL(1, index.size());
+   BOOST_REQUIRE_EQUAL(1u, index.size());
 
    check_generation_context( index.begin()->packed_trx,
                              trace3->id,
@@ -790,11 +807,11 @@ BOOST_AUTO_TEST_CASE( restrict_action_to_self_test ) { try {
    BOOST_REQUIRE( d );
 
    c.create_accounts( {"testacc"_n, "acctonotify"_n, "alice"_n} );
-   c.set_code( "testacc"_n, contracts::restrict_action_test_wasm() );
-   c.set_abi( "testacc"_n, contracts::restrict_action_test_abi().data() );
+   c.set_code( "testacc"_n, test_contracts::restrict_action_test_wasm() );
+   c.set_abi( "testacc"_n, test_contracts::restrict_action_test_abi() );
 
-   c.set_code( "acctonotify"_n, contracts::restrict_action_test_wasm() );
-   c.set_abi( "acctonotify"_n, contracts::restrict_action_test_abi().data() );
+   c.set_code( "acctonotify"_n, test_contracts::restrict_action_test_wasm() );
+   c.set_abi( "acctonotify"_n, test_contracts::restrict_action_test_abi() );
 
    // Before the protocol feature is preactivated
    // - Sending inline action to self = no problem
@@ -959,11 +976,11 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    // Deploy contract that rejects all actions dispatched to it with the following exceptions:
    //   * eosio::setcode to set code on the eosio is allowed (unless the rejectall account exists)
    //   * eosio::newaccount is allowed only if it creates the rejectall account.
-   c.set_code( config::system_account_name, contracts::reject_all_wasm() );
+   c.set_code( config::system_account_name, test_contracts::reject_all_wasm() );
    c.produce_block();
 
    // Before activation, deploying a contract should work since setcode won't be forwarded to the WASM on eosio.
-   c.set_code( tester1_account, contracts::noop_wasm() );
+   c.set_code( tester1_account, test_contracts::noop_wasm() );
 
    // Activate FORWARD_SETCODE protocol feature and then return contract on eosio back to what it was.
    const auto& pfm = c.control->get_protocol_feature_manager();
@@ -972,12 +989,12 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    c.set_before_producer_authority_bios_contract();
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
-   c.set_code( config::system_account_name, contracts::reject_all_wasm() );
+   c.set_code( config::system_account_name, test_contracts::reject_all_wasm() );
    c.produce_block();
 
    // After activation, deploying a contract causes setcode to be dispatched to the WASM on eosio,
    // and in this case the contract is configured to reject the setcode action.
-   BOOST_REQUIRE_EXCEPTION( c.set_code( tester2_account, contracts::noop_wasm() ),
+   BOOST_REQUIRE_EXCEPTION( c.set_code( tester2_account, test_contracts::noop_wasm() ),
                             eosio_assert_message_exception,
                             eosio_assert_message_is( "rejecting all actions" ) );
 
@@ -992,7 +1009,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
 
    // It will now not be possible to deploy the reject_all contract to the eosio account,
    // because after it is set by the native function, it is called immediately after which will reject the transaction.
-   BOOST_REQUIRE_EXCEPTION( c.set_code( config::system_account_name, contracts::reject_all_wasm() ),
+   BOOST_REQUIRE_EXCEPTION( c.set_code( config::system_account_name, test_contracts::reject_all_wasm() ),
                             eosio_assert_message_exception,
                             eosio_assert_message_is( "rejecting all actions" ) );
 
@@ -1017,7 +1034,7 @@ BOOST_AUTO_TEST_CASE( get_sender_test ) { try {
    c.create_accounts( {tester1_account, tester2_account} );
    c.produce_block();
 
-   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::get_sender_test_wasm() ),
+   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, test_contracts::get_sender_test_wasm() ),
                            wasm_exception,
                            fc_exception_message_is( "env.get_sender unresolveable" ) );
 
@@ -1028,10 +1045,10 @@ BOOST_AUTO_TEST_CASE( get_sender_test ) { try {
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
 
-   c.set_code( tester1_account, contracts::get_sender_test_wasm() );
-   c.set_abi( tester1_account, contracts::get_sender_test_abi().data() );
-   c.set_code( tester2_account, contracts::get_sender_test_wasm() );
-   c.set_abi( tester2_account, contracts::get_sender_test_abi().data() );
+   c.set_code( tester1_account, test_contracts::get_sender_test_wasm() );
+   c.set_abi( tester1_account, test_contracts::get_sender_test_abi() );
+   c.set_code( tester2_account, test_contracts::get_sender_test_wasm() );
+   c.set_abi( tester2_account, test_contracts::get_sender_test_abi() );
    c.produce_block();
 
    BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, "sendinline"_n, tester1_account, mutable_variant_object()
@@ -1071,11 +1088,11 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    const auto& bob_account = account_name("bob");
    c.create_accounts( {tester1_account, tester2_account, alice_account, bob_account} );
    c.produce_block();
-   c.set_code( tester1_account, contracts::ram_restrictions_test_wasm() );
-   c.set_abi( tester1_account, contracts::ram_restrictions_test_abi().data() );
+   c.set_code( tester1_account, test_contracts::ram_restrictions_test_wasm() );
+   c.set_abi( tester1_account, test_contracts::ram_restrictions_test_abi() );
    c.produce_block();
-   c.set_code( tester2_account, contracts::ram_restrictions_test_wasm() );
-   c.set_abi( tester2_account, contracts::ram_restrictions_test_abi().data() );
+   c.set_code( tester2_account, test_contracts::ram_restrictions_test_wasm() );
+   c.set_abi( tester2_account, test_contracts::ram_restrictions_test_abi() );
    c.produce_block();
 
    // Basic setup
@@ -1728,7 +1745,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
    // ensure the first possible new block contains a producer_schedule_change_extension
    auto first_new_block = c.produce_block();
    BOOST_REQUIRE_EQUAL(first_new_block->new_producers.has_value(), false);
-   BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.size(), 1);
+   BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.size(), 1u);
    BOOST_REQUIRE_EQUAL(first_new_block->header_extensions.at(0).first, producer_schedule_change_extension::extension_id());
 
    // promote to active schedule

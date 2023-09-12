@@ -31,36 +31,24 @@ These can be specified from both the `nodeos` command-line or the `config.ini` f
 
 ```console
 Config Options for eosio::state_history_plugin:
-
   --state-history-dir arg (="state-history")
-                                        the location of the state-history 
+                                        the location of the state-history
                                         directory (absolute path or relative to
                                         application data dir)
   --trace-history                       enable trace history
   --chain-state-history                 enable chain state history
   --state-history-endpoint arg (=127.0.0.1:8080)
-                                        the endpoint upon which to listen for 
-                                        incoming connections. Caution: only 
-                                        expose this port to your internal 
+                                        the endpoint upon which to listen for
+                                        incoming connections. Caution: only
+                                        expose this port to your internal
                                         network.
+  --state-history-unix-socket-path arg  the path (relative to data-dir) to
+                                        create a unix socket upon which to
+                                        listen for incoming connections.
   --trace-history-debug-mode            enable debug mode for trace history
-```
-
-## Examples
-
-## Dependencies
-
-* [`chain_plugin`](../chain_plugin/index.md)
-
-### Load Dependency Examples
-
-```console
-# config.ini
-plugin = eosio::chain_plugin --disable-replay-opts
-```
-```sh
-# command-line
-nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
+  --state-history-log-retain-blocks arg if set, periodically prune the state
+                                        history files to store only configured
+                                        number of most recent blocks
 ```
 
 ## How-To Guides

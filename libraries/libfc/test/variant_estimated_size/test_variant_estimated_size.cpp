@@ -1,5 +1,4 @@
-#define BOOST_TEST_MODULE variant
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <fc/variant_object.hpp>
 #include <fc/exception/exception.hpp>
@@ -7,11 +6,12 @@
 #include <string>
 
 using namespace fc;
+using std::string;
 
 BOOST_AUTO_TEST_SUITE(variant_estimated_size_suite)
 BOOST_AUTO_TEST_CASE(null_variant_estimated_size_test)
 {
-   nullptr_t np;
+   constexpr nullptr_t np=nullptr;
 
    variant v;
    variant v_nullptr(np);

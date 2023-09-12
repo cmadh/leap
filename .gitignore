@@ -5,25 +5,20 @@
 *.bc
 *.wast
 *.wast.hpp
-*.s
 *.dot
 *.abi.hpp
-*.cmake
-!.cicd
-!package.cmake
-!CMakeModules/*.cmake
 *.ninja
 \#*
 \.#*
 CMakeCache.txt
 CMakeFiles
-cmake_install.cmake
-cmake-build-debug/
-cmake-build-release/
+cmake-build-*/
 Makefile
 compile_commands.json
 moc_*
 *.moc
+
+.cache
 
 genesis.json
 hardfork.hpp
@@ -75,24 +70,30 @@ witness_node_data_dir
 *.pyc
 *.pyo
 
+*.gdb_history
+
 Testing/*
 build.tar.gz
-build/*
-build-debug/*
+[Bb]uild*/*
 deps/*
 dependencies/*
 
 etc/eosio/node_*
-var/lib/node_*
+TestLogs*
 .vscode
 .idea/
 *.iws
 .DS_Store
+CMakeLists.txt.user
 
 !*.swagger.*
 
 node_modules
 package-lock.json
 
+<<<<<<< HEAD
 cmake-build-debug-wsl-clang/*
 cmake-build-release-wsl-clang/*
+=======
+snapshots
+>>>>>>> main

@@ -17,6 +17,19 @@ if( EOSIO_COMPILE_TEST_CONTRACTS )
       list(APPEND CMAKE_ARGS_VAL -DUSE_EOSIO_CDT_1_8_X=${USE_EOSIO_CDT_1_8_X})
    endif()
 
+   message( STATUS "Building contracts in directory `./unittests/contracts/`" )
+   ExternalProject_Add(
+           contracts_project
+           SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/contracts
+           BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/contracts
+           CMAKE_ARGS ${CMAKE_ARGS_VAL}
+           UPDATE_COMMAND ""
+           PATCH_COMMAND ""
+           TEST_COMMAND ""
+           INSTALL_COMMAND ""
+           BUILD_ALWAYS 1
+   )
+
    message( STATUS "Building contracts in directory `./unittests/test-contracts/`" )
    ExternalProject_Add(
       test_contracts_project
@@ -30,15 +43,18 @@ if( EOSIO_COMPILE_TEST_CONTRACTS )
       BUILD_ALWAYS 1
    )
 else()
+  message( STATUS "Not building contracts in directory `./unittests/contracts/`" )
+  add_subdirectory(contracts)
   message( STATUS "Not building contracts in directory `./unittests/test-contracts/`" )
   add_subdirectory(test-contracts)
 endif()
 
-add_subdirectory(contracts)
 
 if (NOT DISABLE_WASM_SPEC_TESTS)
 add_subdirectory( wasm-spec-tests/generated-tests )
 endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_contracts.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/test_contracts.hpp ESCAPE_QUOTES)
 
 add_subdirectory(snapshots)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/snapshots.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/snapshots.hpp ESCAPE_QUOTES)
@@ -55,7 +71,7 @@ add_custom_command(
 file(GLOB UNIT_TESTS "*.cpp") # find all unit test suites
 add_executable( unit_test ${UNIT_TESTS} protocol_feature_digest_tests.cpp) # build unit tests as one executable
 
-target_link_libraries( unit_test eosio_chain_wrap state_history chainbase eosio_testing fc appbase abieos ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( unit_test eosio_chain_wrap state_history chainbase eosio_testing fc custom_appbase abieos ${PLATFORM_SPECIFIC_LIBS} )
 
 target_compile_options(unit_test PUBLIC -DDISABLE_EOSLIB_SERIALIZE)
 target_include_directories( unit_test PUBLIC
@@ -65,7 +81,8 @@ target_include_directories( unit_test PUBLIC
                             ${CMAKE_CURRENT_SOURCE_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/include
-                            ${CMAKE_SOURCE_DIR}/plugins/http_plugin/include )
+                            ${CMAKE_SOURCE_DIR}/plugins/http_plugin/include
+                            ${CMAKE_SOURCE_DIR}/plugins/chain_interface/include)
 
 ### MARK TEST SUITES FOR EXECUTION ###
 add_test(NAME protocol_feature_digest_unit_test COMMAND unit_test --run_test=protocol_feature_digest_tests --report_level=detailed --color_output --catch_system_errors=no)

@@ -19,7 +19,11 @@
 namespace fc {
 
 namespace detail {
-   using unique_file = std::unique_ptr<FILE, decltype( &fclose )>;
+   inline void close_file(FILE* f) noexcept {
+      fclose(f);
+   }
+
+   using unique_file = std::unique_ptr<FILE, decltype( &close_file )>;
 }
 
 class cfile_datastream;
@@ -29,16 +33,30 @@ class cfile_datastream;
  * std::ios_base::failure exception thrown for errors.
  */
 class cfile {
+   friend class temp_cfile;
 public:
    cfile()
-     : _file(nullptr, &fclose)
+     : _file(nullptr, &detail::close_file)
    {}
 
-   void set_file_path( fc::path file_path ) {
+   cfile(cfile&& other)
+     : _open(other._open)
+     , _file_path(std::move(other._file_path))
+     , _file_blk_size(other._file_blk_size)
+     , _file(std::move(other._file))
+   {}
+
+   cfile& operator=(cfile&& other){
+      swap(*this, other);
+      return *this;
+   }
+
+
+   void set_file_path( std::filesystem::path file_path ) {
       _file_path = std::move( file_path );
    }
 
-   fc::path get_file_path() const {
+   std::filesystem::path get_file_path() const {
       return _file_path;
    }
 
@@ -190,8 +208,8 @@ public:
 
    bool eof() const { return feof(_file.get()) != 0; }
 
-   int getc() { 
-      int ret = fgetc(_file.get());  
+   int getc() {
+      int ret = fgetc(_file.get());
       if (ret == EOF) {
          throw std::ios_base::failure( "cfile: " + _file_path.generic_string() +
                                        " unable to read 1 byte");
@@ -210,11 +228,52 @@ public:
 
    cfile_datastream create_datastream();
 
+
+   friend void swap(cfile& lhs, cfile& rhs) {
+      using std::swap;
+      swap(lhs._open, rhs._open);
+      swap(lhs._file_path, rhs._file_path);
+      swap(lhs._file_blk_size, rhs._file_blk_size);
+      swap(lhs._file, rhs._file);
+   }
+
 private:
    bool                  _open = false;
-   fc::path              _file_path;
+   std::filesystem::path _file_path;
    size_t                _file_blk_size = 4096;
    detail::unique_file   _file;
+};
+
+class temp_cfile {
+   cfile _impl;
+public:
+   explicit temp_cfile(const char* mode = "wb"){
+      std::filesystem::path template_path{ std::filesystem::temp_directory_path() / "fc-XXXXXX" };
+      std::string tmp = template_path.string();
+      int fd = mkstemp(tmp.data());
+      if (fd == -1)
+         throw std::system_error(errno, std::generic_category(), __PRETTY_FUNCTION__);
+      _impl.set_file_path(tmp);
+      _impl._file.reset(fdopen(fd, mode));
+      if( !_impl._file ) {
+         using namespace std::literals::string_literals;
+         throw std::ios_base::failure( "cfile unable to open: "s +  tmp + " in mode: " + std::string( mode ) );
+      }
+      _impl._open = true;
+   }
+   ~temp_cfile() {
+      _impl.close();
+      std::error_code ec;
+      std::filesystem::remove(_impl.get_file_path(), ec);
+   }
+
+   temp_cfile(temp_cfile&& other): _impl(std::move(other._impl)) { }
+   temp_cfile& operator = (temp_cfile&& other){
+      _impl = std::move(other._impl);
+      return *this;
+   }
+
+   cfile& file() { return _impl; }
 };
 
 /*
@@ -264,6 +323,11 @@ class datastream<fc::cfile, void> : public fc::cfile {
 
    fc::cfile&       storage() { return *this; }
    const fc::cfile& storage() const { return *this; }
+
+   friend void swap(datastream<fc::cfile, void>& lhs, datastream<fc::cfile, void>& rhs) {
+      using std::swap;
+      swap(static_cast<fc::cfile&>(lhs), static_cast<fc::cfile&>(rhs));
+   }
 };
 
 

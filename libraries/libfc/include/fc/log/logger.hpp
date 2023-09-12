@@ -1,7 +1,7 @@
 #pragma once
-#include <fc/string.hpp>
 #include <fc/time.hpp>
 #include <fc/log/log_message.hpp>
+#include <string>
 
 #ifndef DEFAULT_LOGGER
 #define DEFAULT_LOGGER "default"
@@ -25,11 +25,11 @@ namespace fc
    class logger 
    {
       public:
-         static logger get( const fc::string& name = DEFAULT_LOGGER );
-         static void update( const fc::string& name, logger& log );
+         static logger get( const std::string& name = DEFAULT_LOGGER );
+         static void update( const std::string& name, logger& log );
 
          logger();
-         logger( const string& name, const logger& parent = nullptr );
+         logger( const std::string& name, const logger& parent = nullptr );
          logger( std::nullptr_t );
          logger( const logger& c );
          logger( logger&& c );
@@ -44,8 +44,8 @@ namespace fc
          logger&    set_parent( const logger& l );
          logger     get_parent()const;
 
-         void  set_name( const fc::string& n );
-         const fc::string& name()const;
+         void  set_name( const std::string& n );
+         std::string get_name()const;
 
          bool is_enabled( log_level e )const;
          void log( log_message m );
@@ -74,6 +74,12 @@ namespace fc
 # define FC_MULTILINE_MACRO_END  } while (0)
 #endif
 
+#define fc_tlog( LOGGER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( (LOGGER).is_enabled( fc::log_level::all ) ) \
+      (LOGGER).log( FC_LOG_MESSAGE( all, FORMAT, __VA_ARGS__ ) ); \
+  FC_MULTILINE_MACRO_END
+
 #define fc_dlog( LOGGER, FORMAT, ... ) \
   FC_MULTILINE_MACRO_BEGIN \
    if( (LOGGER).is_enabled( fc::log_level::debug ) ) \
@@ -96,6 +102,12 @@ namespace fc
   FC_MULTILINE_MACRO_BEGIN \
    if( (LOGGER).is_enabled( fc::log_level::error ) ) \
       (LOGGER).log( FC_LOG_MESSAGE( error, FORMAT, __VA_ARGS__ ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define tlog( FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( (fc::logger::get(DEFAULT_LOGGER)).is_enabled( fc::log_level::all ) ) \
+      (fc::logger::get(DEFAULT_LOGGER)).log( FC_LOG_MESSAGE( all, FORMAT, __VA_ARGS__ ) ); \
   FC_MULTILINE_MACRO_END
 
 #define dlog( FORMAT, ... ) \
