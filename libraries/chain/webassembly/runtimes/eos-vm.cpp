@@ -287,9 +287,16 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_profile_runtime::inst
 #endif
 
 template<typename Impl>
-thread_local eos_vm_runtime<Impl>::context_t eos_vm_runtime<Impl>::_exec_ctx;
+using eos_vm_runtime_context_t = typename eos_vm_runtime<Impl>::context_t;
+
 template<typename Impl>
-thread_local eos_vm_backend_t<Impl> eos_vm_runtime<Impl>::_bkend;
+using eos_vm_runtime_backend_t = eos_vm_backend_t<Impl>;
+
+template<typename Impl>
+thread_local eos_vm_runtime_context_t<Impl> eos_vm_runtime<Impl>::_exec_ctx;
+
+template<typename Impl>
+thread_local eos_vm_runtime_backend_t<Impl> eos_vm_runtime<Impl>::_bkend;
 }
 
 template <auto HostFunction, typename... Preconditions>

@@ -265,11 +265,7 @@ protected:
 class protocol_feature_manager {
 public:
 
-<<<<<<< HEAD
-   protocol_feature_manager( protocol_feature_set&& pfs, std::function<deep_mind_handler_base*()> get_deep_mind_logger );
-=======
-   protocol_feature_manager( protocol_feature_set&& pfs, std::function<deep_mind_handler*(bool is_trx_transient)> get_deep_mind_logger );
->>>>>>> main
+   protocol_feature_manager( protocol_feature_set&& pfs, std::function<deep_mind_handler_base*(bool is_trx_transient)> get_deep_mind_logger );
 
    class const_iterator {
    public:
@@ -398,11 +394,7 @@ protected:
    bool                                   _initialized = false;
 
 private:
-<<<<<<< HEAD
-   std::function<deep_mind_handler_base*()>           _get_deep_mind_logger;
-=======
-   std::function<deep_mind_handler*(bool is_trx_transient)> _get_deep_mind_logger;
->>>>>>> main
+   std::function<deep_mind_handler_base*(bool is_trx_transient)> _get_deep_mind_logger;
 };
 
 std::optional<builtin_protocol_feature> read_builtin_protocol_feature( const std::filesystem::path& p  );

@@ -248,13 +248,12 @@ struct controller_impl {
    uint32_t                        snapshot_head_block = 0;
    struct chain; // chain is a namespace so use an embedded type for the named_thread_pool tag
    named_thread_pool<chain>        thread_pool;
-   deep_mind_handler*              deep_mind_logger = nullptr;
-<<<<<<< HEAD
-=======
+   deep_mind_handler_base*         deep_mind_logger = nullptr;
+
    bool                            okay_to_print_integrity_hash_on_stop = false;
 
    thread_local static platform_timer timer; // a copy for main thread and each read-only thread
->>>>>>> main
+
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
    thread_local static vm::wasm_allocator wasm_alloc; // a copy for main thread and each read-only thread
 #endif
@@ -2667,7 +2666,7 @@ struct controller_impl {
       return trx;
    }
 
-   inline deep_mind_handler* get_deep_mind_logger(bool is_trx_transient) const {
+   inline deep_mind_handler_base* get_deep_mind_logger(bool is_trx_transient) const {
       // do not perform deep mind logging for read-only and dry-run transactions
       return is_trx_transient ? nullptr : deep_mind_logger;
    }
@@ -3571,11 +3570,11 @@ bool controller::all_subjective_mitigations_disabled()const {
    return my->conf.disable_all_subjective_mitigations;
 }
 
-deep_mind_handler* controller::get_deep_mind_logger(bool is_trx_transient)const {
+deep_mind_handler_base* controller::get_deep_mind_logger(bool is_trx_transient)const {
    return my->get_deep_mind_logger(is_trx_transient);
 }
 
-void controller::enable_deep_mind(deep_mind_handler* logger) {
+void controller::enable_deep_mind(deep_mind_handler_base* logger) {
    EOS_ASSERT( logger != nullptr, misc_exception, "Invalid logger passed into enable_deep_mind, must be set" );
    my->deep_mind_logger = logger;
 }
@@ -3653,16 +3652,11 @@ std::optional<chain_id_type> controller::extract_chain_id_from_db( const path& s
       if (gpo==nullptr) return {};
 
       return gpo->chain_id;
-<<<<<<< HEAD
-   } catch (std::system_error &) {} //  do not propagate db_error_code::not_found" for absent db, so it will be created
-=======
    } catch( const std::system_error& e ) {
       // do not propagate db_error_code::not_found for absent db, so it will be created
       if( e.code().value() != chainbase::db_error_code::not_found )
          throw;
    }
->>>>>>> main
-
    return {};
 }
 

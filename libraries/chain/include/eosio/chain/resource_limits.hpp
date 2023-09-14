@@ -64,11 +64,7 @@ namespace eosio { namespace chain {
    class resource_limits_manager {
       public:
 
-<<<<<<< HEAD
-         explicit resource_limits_manager(chainbase::database& db, std::function<deep_mind_handler_base*()> get_deep_mind_logger)
-=======
-         explicit resource_limits_manager(chainbase::database& db, std::function<deep_mind_handler*(bool is_trx_transient)> get_deep_mind_logger)
->>>>>>> main
+         explicit resource_limits_manager(chainbase::database& db, std::function<deep_mind_handler_base*(bool is_trx_transient)> get_deep_mind_logger)
          :_db(db),_get_deep_mind_logger(get_deep_mind_logger)
          {
          }
@@ -118,11 +114,7 @@ namespace eosio { namespace chain {
 
       private:
          chainbase::database&         _db;
-<<<<<<< HEAD
-         std::function<deep_mind_handler_base*()> _get_deep_mind_logger;
-=======
-         std::function<deep_mind_handler*(bool is_trx_transient)> _get_deep_mind_logger;
->>>>>>> main
+         std::function<deep_mind_handler_base*(bool is_trx_transient)> _get_deep_mind_logger;
    };
 } } } /// eosio::chain
 
