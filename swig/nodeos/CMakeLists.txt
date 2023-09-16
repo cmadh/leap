@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
+if (POLICY CMP0122)
+  cmake_policy(SET CMP0122 NEW)
+endif()
+
 project(NodeosWrapperProj VERSION 1.0 LANGUAGES CXX)
 
 find_package(SWIG REQUIRED)
