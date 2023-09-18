@@ -13,6 +13,12 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "Export compile command" TRUE)
 set(PROJECT_NAMESPACE cs)
 message(STATUS "${PROJECT_NAME} version: ${PROJECT_VERSION}") # TODO
 
+set(NODEOS_INTEROP_LIBRARY_NAME ${NODE_EXECUTABLE_NAME}Interop)
+message(STATUS " NODEOS_INTEROP_LIBRARY_NAME: ${NODEOS_INTEROP_LIBRARY_NAME}")
+
+set(NODEOS_INTEROP_DOTNET_LIBRARY_NAME ${NODEOS_INTEROP_LIBRARY_NAME}Dotnet)
+message(STATUS "NODEOS_INTEROP_DOTNET_LIBRARY_NAME: ${NODEOS_INTEROP_DOTNET_LIBRARY_NAME}")
+
 get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(isMultiConfig)
     if(NOT CMAKE_CONFIGURATION_TYPES)
@@ -32,58 +38,40 @@ endif()
 
 # Layout build dir like install dir
 include(GNUInstallDirs)
-set(BUILD_SHARED_LIBS ON)
-if(UNIX)
-    option(BUILD_SHARED_LIBS "Build shared libraries (.so or .dyld)." ON)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
-    # for multi-config build system (e.g. Xcode, Ninja Multi-Config)
-    foreach(OutputConfig IN LISTS CMAKE_CONFIGURATION_TYPES)
-        string(TOUPPER ${OutputConfig} OUTPUTCONFIG)
-        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_LIBDIR})
-        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_LIBDIR})
-        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_BINDIR})
-    endforeach()
-else()
-    # Currently Only support static build for windows
-    option(BUILD_SHARED_LIBS "Build shared libraries (.dll)." ON)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
-    # for multi-config builds (e.g. msvc)
-    foreach(OutputConfig IN LISTS CMAKE_CONFIGURATION_TYPES)
-        string(TOUPPER ${OutputConfig} OUTPUTCONFIG)
-        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_BINDIR})
-        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_BINDIR})
-        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_BINDIR})
-    endforeach()
-endif()
+option(BUILD_SHARED_LIBS "Build shared libraries (.so or .dyld)." ON)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
+# for multi-config build system (e.g. Xcode, Ninja Multi-Config)
+foreach(OutputConfig IN LISTS CMAKE_CONFIGURATION_TYPES)
+    string(TOUPPER ${OutputConfig} OUTPUTCONFIG)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_LIBDIR})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_LIBDIR})
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/${OutputConfig}/${CMAKE_INSTALL_BINDIR})
+endforeach()
+# No Windows Support
 
-# By default only the CMakeSwig C++ library is built.
+# By default only the NodeosInterop C++ library is built.
 option(BUILD_CXX "Build C++ library" ON)
 message(STATUS "Build C++ library: ${BUILD_CXX}")
 
 option(BUILD_DOTNET "Build .NET Library" ON)
 message(STATUS "Build .Net: ${BUILD_DOTNET}")
+
 option(BUILD_JAVA "Build Java Library" OFF)
 message(STATUS "Build Java: ${BUILD_JAVA}")
+
 option(BUILD_PYTHON "Build Python Library" OFF)
 message(STATUS "Build Python: ${BUILD_PYTHON}")
 
 message(STATUS "Build shared libraries: ${BUILD_SHARED_LIBS}")
+
 # Disable CTest targets
 #set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 #include(CTest)
 
 include(cpp)
-
-if(WIN32 AND (BUILD_DOTNET OR BUILD_JAVA OR BUILD_PYTHON))
-    message(STATUS "Getting SWIG: ...")
-    include(swig)
-    message(STATUS "Getting SWIG: ...DONE")
-endif()
 
 if(BUILD_DOTNET)
     # .Net Core 3.1 LTS is not available for osx arm64
@@ -111,6 +99,7 @@ if(BUILD_PYTHON)
 endif()
 include(python)
 
+# TODO Tests and Examples
 #add_subdirectory(tests)
 
 #option(BUILD_EXAMPLES "Build examples" ON)

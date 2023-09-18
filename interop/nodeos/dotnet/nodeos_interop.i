@@ -1,10 +1,10 @@
-/* nodeos_swig.i file */
-%module(directors="1") NodeosSwigModule
+/* nodeos_interop.i file */
+%module(directors="1") NodeosInteropModule
 
-//%include swig_logger_base.i
+//%include interop_logger_base.i
 
 %{
-#include "nodeos_swig.hpp"
+#include "nodeos_interop.hpp"
 %}
 
 //%rename("%(camelcase)s", %$isclass) "";
@@ -31,9 +31,9 @@
 %pointer_functions(unsigned long long, p_unsigned_long_long);
 %pointer_functions(unsigned short, p_unsigned_short);
 
-/* enabling the director for swig_logger_base to allow nodeos to call overriden virtual methods in C# */
-%feature("director") swig_logger_base;
-%include swig_logger_base.hpp
+/* enabling the director for interop_logger_base to allow nodeos to call overriden virtual methods in C# */
+%feature("director") interop_logger_base;
+//%include interop_logger_base.hpp
 
 /* make used classes partial c# classes */
 %typemap(csclassmodifiers) SWIGTYPE "public partial class"
@@ -41,4 +41,4 @@
 /* generate template around vector<string> */
 %template(StringVector) std::vector<std::string>;
 
-%include nodeos_swig.hpp
+%include nodeos_interop.hpp

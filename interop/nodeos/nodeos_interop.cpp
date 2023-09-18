@@ -16,7 +16,7 @@
 #include <boost/exception/diagnostic_information.hpp>
 
 #include "config.hpp"
-#include "nodeos_swig.hpp"
+#include "nodeos_interop.hpp"
 
 #include <thread>
 #include <future>
@@ -24,7 +24,7 @@
 using namespace appbase;
 using namespace eosio;
 
-eosio::chain::deep_mind_swig_handler _deep_mind_swig_log = deep_mind_swig_handler();
+eosio::chain::deep_mind_interop_handler _deep_mind_interop_log = deep_mind_interop_handler();
 
 
 namespace detail {
@@ -112,7 +112,7 @@ enum return_codes {
     NODE_MANAGEMENT_SUCCESS = 5
 };
 
-void NodeosSwig::StartNodeos(int argc, std::vector<std::string> args, swig_logger_base *swig_logger){
+void NodeosInterop::StartNodeos(int argc, std::vector<std::string> args, interop_logger_base *interop_logger){
     try {
         pthread_setname_np(pthread_self(), "nodeos-thread");
         ilog("ARGS:");
@@ -126,7 +126,7 @@ void NodeosSwig::StartNodeos(int argc, std::vector<std::string> args, swig_logge
         for(auto& s: args)
             cstrings.push_back(&s[0]);
 
-        _deep_mind_swig_log._swig_logger = swig_logger;
+        _deep_mind_interop_log._interop_logger = interop_logger;
 
         app().set_version(eosio::nodeos::config::version);
         app().set_version_string(eosio::version::version_client());
@@ -155,10 +155,10 @@ void NodeosSwig::StartNodeos(int argc, std::vector<std::string> args, swig_logge
             // INITIALIZE_FAIL;
         }
         if (auto chain_plug = app().find_plugin<chain_plugin>()) {
-            chain_plug->chain().enable_deep_mind(&_deep_mind_swig_log);
-            ilog("enabled swig deep-mind");
+            chain_plug->chain().enable_deep_mind(&_deep_mind_interop_log);
+            ilog("enabled interop deep-mind");
         } else {
-            elog("failed to enable deep_mind");
+            elog("failed to enable interop deep_mind");
             // INITIALIZE_FAIL;
         }
         initialize_logging();
@@ -208,13 +208,13 @@ void NodeosSwig::StartNodeos(int argc, std::vector<std::string> args, swig_logge
     }
 }
 
-int NodeosSwig::Start(int argc, std::vector<std::string> args, swig_logger_base *swig_logger)
+int NodeosInterop::Start(int argc, std::vector<std::string> args, interop_logger_base *interop_logger)
 {
-    std::thread thread_object(&NodeosSwig::StartNodeos, this, argc, args, swig_logger);
+    std::thread thread_object(&NodeosInterop::StartNodeos, this, argc, args, interop_logger);
 //    int i = ret.get();
 //    if(i != 0)
 //        return i;
-//    std::thread thread_obj(StartNodeos, argc, args, swig_logger);
+//    std::thread thread_obj(StartNodeos, argc, args, interop_logger);
     thread_object.join();
     ilog("${name} successfully exiting", ("name", nodeos::config::node_executable_name));
     return SUCCESS;

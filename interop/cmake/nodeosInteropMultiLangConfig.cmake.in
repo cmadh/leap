@@ -1,0 +1,3 @@
+# nodeosInteropMultiLang CMake configuration file
+
+include("${CMAKE_CURRENT_LIST_DIR}/nodeosInteropMultiLangTargets.cmake")

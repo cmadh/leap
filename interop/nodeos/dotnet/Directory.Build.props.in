@@ -18,7 +18,7 @@
        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
        <PackageOutputPath>@DOTNET_PACKAGES_DIR@</PackageOutputPath>
-       <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+       <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
        <RepositoryType>git</RepositoryType>
        <RepositoryUrl>https://github.com/mizux/dotnet-native</RepositoryUrl>
         <!--Disable CS1591 "Missing XML comment for publicly visible type or member" (Swig doesn't generate documentation)-->

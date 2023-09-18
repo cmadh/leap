@@ -3,11 +3,11 @@
     <OutputType>Library</OutputType>
     @DOTNET_TFM@
     <RuntimeIdentifier>@RUNTIME_IDENTIFIER@</RuntimeIdentifier>
-    <AssemblyName>mizux-cmakeswig-native</AssemblyName>
+    <AssemblyName>io-liquiid-nodeos_interop-native</AssemblyName>
     <Version>@PROJECT_VERSION@</Version>
 
     <!-- Nuget Properties -->
-    <Description>.NET native wrapper for the CMakeSwig project</Description>
+    <Description>.NET native wrapper for the NodeosInterop project</Description>
     <IncludeBuildOutput>false</IncludeBuildOutput>
 
     <!-- Pack Option -->
@@ -24,9 +24,8 @@
     <!-- Native library must be in native directory... -->
     <!-- If project is built as a STATIC_LIBRARY (e.g. Windows) then we don't have to include it -->
     <Content Include="
-      $<TARGET_FILE:mizux-cmakeswig-native>
-      $<$<STREQUAL:$<TARGET_PROPERTY:nodeos_interop,TYPE>,SHARED_LIBRARY>:;$<TARGET_SONAME_FILE:nodeos_interop>>
-
+      $<TARGET_FILE:io-liquiid-nodeos_interop-native>
+      $<$<STREQUAL:$<TARGET_PROPERTY:nodeosInterop,TYPE>,SHARED_LIBRARY>:;$<TARGET_SONAME_FILE:nodeosInterop>>
     ">
       <PackagePath>runtimes/@RUNTIME_IDENTIFIER@/native/%(Filename)%(Extension)</PackagePath>
       <Pack>true</Pack>

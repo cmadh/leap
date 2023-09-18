@@ -1,16 +1,16 @@
-#ifndef LEAP_DEEP_MIND_SWIG_HANDLER_H
-#define LEAP_DEEP_MIND_SWIG_HANDLER_H
+#ifndef LEAP_DEEP_MIND_INTEROP_HANDLER_H
+#define LEAP_DEEP_MIND_INTEROP_HANDLER_H
 
 #include <eosio/chain/deep_mind.hpp>
 #include <eosio/chain/types.hpp>
 
-#include "swig_logger_base.hpp"
+#include "interop_logger_base.hpp"
 
 namespace eosio::chain {
-    class deep_mind_swig_handler : public deep_mind_handler_base {
+    class deep_mind_interop_handler : public deep_mind_handler_base {
     public:
 
-        deep_mind_swig_handler();
+        deep_mind_interop_handler();
 
         void update_config(deep_mind_config config) override;
 
@@ -95,7 +95,7 @@ namespace eosio::chain {
 
         void on_remove_permission(const permission_object &permission) override;
 
-        swig_logger_base *_swig_logger;
+        interop_logger_base *_interop_logger;
     private:
         uint32_t _action_id = 0;
         ram_trace _ram_trace;
@@ -104,4 +104,4 @@ namespace eosio::chain {
     };
 }
 
-#endif //LEAP_DEEP_MIND_SWIG_HANDLER_H
+#endif //LEAP_DEEP_MIND_INTEROP_HANDLER_H

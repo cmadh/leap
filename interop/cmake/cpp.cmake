@@ -93,9 +93,6 @@ function(add_cpp_test FILE_NAME)
 endfunction()
 
 add_subdirectory(nodeos)
-#add_subdirectory(Bar)
-#add_subdirectory(FooBar)
-#add_subdirectory(FooBarApp)
 
 # Install
 #install(EXPORT ${PROJECT_NAME}Targets

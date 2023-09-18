@@ -24,11 +24,12 @@ else()
 endif()
 
 # Needed by dotnet/CMakeLists.txt
-set(DOTNET_PACKAGE Mizux.CMakeSwig)
+set(DOTNET_PACKAGE io.Liquiid.NodeosInteropDotnet)
 set(DOTNET_PACKAGES_DIR "${PROJECT_BINARY_DIR}/dotnet/packages")
 
+# only linux-x64 for now
 # see: https://docs.microsoft.com/en-us/dotnet/core/rid-catalog
-if(APPLE)
+#[[if(APPLE)
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
     set(RUNTIME_IDENTIFIER osx-arm64)
   else()
@@ -37,25 +38,29 @@ if(APPLE)
 elseif(UNIX)
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
     set(RUNTIME_IDENTIFIER linux-arm64)
-  else()
+  else()]]
     set(RUNTIME_IDENTIFIER linux-x64)
-  endif()
+#[[  endif()
 elseif(WIN32)
   set(RUNTIME_IDENTIFIER win-x64)
 else()
   message(FATAL_ERROR "Unsupported system !")
-endif()
+endif()]]
+
 set(DOTNET_NATIVE_PROJECT ${DOTNET_PACKAGE}.runtime.${RUNTIME_IDENTIFIER})
 message(STATUS ".Net runtime project: ${DOTNET_NATIVE_PROJECT}")
 set(DOTNET_NATIVE_PROJECT_DIR ${PROJECT_BINARY_DIR}/dotnet/${DOTNET_NATIVE_PROJECT})
 message(STATUS ".Net runtime project build path: ${DOTNET_NATIVE_PROJECT_DIR}")
 
+# only x64 for now
 # see: Platform
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
+#[[if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
   set(DOTNET_PLATFORM arm64)
-else()
+else()]]
   set(DOTNET_PLATFORM x64)
+#[[
 endif()
+]]
 
 # see: https://docs.microsoft.com/en-us/dotnet/standard/frameworks
 if(USE_DOTNET_CORE_31 AND USE_DOTNET_7)
@@ -74,30 +79,33 @@ set(DOTNET_PROJECT_DIR ${PROJECT_BINARY_DIR}/dotnet/${DOTNET_PROJECT})
 message(STATUS ".Net project build path: ${DOTNET_PROJECT_DIR}")
 
 # Create the native library
-add_library(mizux-cmakeswig-native SHARED ${PROJECT_SOURCE_DIR}/nodeos/dummy.cpp)
-set_target_properties(mizux-cmakeswig-native PROPERTIES
+add_library(io-liquiid-nodeos_interop-native SHARED ${PROJECT_SOURCE_DIR}/nodeos/dummy.cpp)
+set_target_properties(io-liquiid-nodeos_interop-native PROPERTIES
   PREFIX ""
   POSITION_INDEPENDENT_CODE ON)
+
 # note: macOS is APPLE and also UNIX !
-if(APPLE)
-  set_target_properties(mizux-cmakeswig-native PROPERTIES INSTALL_RPATH "@loader_path")
+#[[if(APPLE)
+  set_target_properties(io-liquiid-nodeos_interop-native PROPERTIES INSTALL_RPATH "@loader_path")
   # Xcode fails to build if library doesn't contains at least one source file.
   if(XCODE)
     file(GENERATE
-      OUTPUT ${PROJECT_BINARY_DIR}/mizux-cmakeswig-native/version.cpp
+      OUTPUT ${PROJECT_BINARY_DIR}/io-liquiid-nodeos_interop-native/version.cpp
       CONTENT "namespace {char* version = \"${PROJECT_VERSION}\";}")
-    target_sources(mizux-cmakeswig-native PRIVATE ${PROJECT_BINARY_DIR}/mizux-cmakeswig-native/version.cpp)
+    target_sources(io-liquiid-nodeos_interop-native PRIVATE ${PROJECT_BINARY_DIR}/io-liquiid-nodeos_interop-native/version.cpp)
   endif()
-elseif(UNIX)
-  set_target_properties(mizux-cmakeswig-native PROPERTIES INSTALL_RPATH "$ORIGIN")
+elseif(UNIX)]]
+  set_target_properties(io-liquiid-nodeos_interop-native PROPERTIES INSTALL_RPATH "$ORIGIN")
+#[[
 endif()
+]]
 
 list(APPEND CMAKE_SWIG_FLAGS ${FLAGS} "-I${PROJECT_SOURCE_DIR}")
 
 # Swig wrap all libraries
 #foreach(SUBPROJECT IN ITEMS nodeos)
 add_subdirectory(nodeos/dotnet)
-target_link_libraries(mizux-cmakeswig-native PRIVATE nodeos_interop)
+target_link_libraries(io-liquiid-nodeos_interop-native PRIVATE ${NODEOS_INTEROP_DOTNET_LIBRARY_NAME})
 #endforeach()
 
 file(COPY ${PROJECT_SOURCE_DIR}/nodeos/dotnet/logo.png DESTINATION ${PROJECT_BINARY_DIR}/dotnet)
@@ -133,8 +141,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E touch ${DOTNET_NATIVE_PROJECT_DIR}/timestamp
   DEPENDS
     ${PROJECT_BINARY_DIR}/nodeos/dotnet/Directory.Build.props
-   ${DOTNET_NATIVE_PROJECT_DIR}/${DOTNET_NATIVE_PROJECT}.csproj
-   mizux-cmakeswig-native
+    ${DOTNET_NATIVE_PROJECT_DIR}/${DOTNET_NATIVE_PROJECT}.csproj
+    io-liquiid-nodeos_interop-native
   BYPRODUCTS
     ${DOTNET_NATIVE_PROJECT_DIR}/bin
     ${DOTNET_NATIVE_PROJECT_DIR}/obj
@@ -157,6 +165,8 @@ configure_file(
 
 add_custom_command(
   OUTPUT ${DOTNET_PROJECT_DIR}/${DOTNET_PROJECT}.csproj
+  COMMAND ${CMAKE_COMMAND} -E copy ${DOTNET_NATIVE_PROJECT_DIR}/bin/Release/*.nupkg ${DOTNET_PACKAGES_DIR}
+  #COMMAND ${CMAKE_COMMAND} -E copy ${DOTNET_NATIVE_PROJECT_DIR}/bin/Release/*.snupkg ${DOTNET_PACKAGES_DIR}
   COMMAND ${CMAKE_COMMAND} -E copy ${DOTNET_PROJECT}.csproj.in ${DOTNET_PROJECT}.csproj
   DEPENDS
     ${DOTNET_PROJECT_DIR}/${DOTNET_PROJECT}.csproj.in
@@ -182,6 +192,14 @@ add_custom_target(nodeos_interop_dotnet ALL
     ${DOTNET_PROJECT_DIR}/timestamp
   WORKING_DIRECTORY ${DOTNET_PROJECT_DIR})
 
+add_custom_command(
+        TARGET nodeos_interop_dotnet
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${DOTNET_PROJECT_DIR}/bin/Release/*.nupkg ${DOTNET_PACKAGES_DIR}
+        #COMMAND ${CMAKE_COMMAND} -E copy ${DOTNET_PROJECT_DIR}/bin/Release/*.snupkg ${DOTNET_PACKAGES_DIR}
+        WORKING_DIRECTORY ${DOTNET_PROJECT_DIR})
+
+# TODO Tests
 #################
 ##  .Net Test  ##
 #################
@@ -191,7 +209,7 @@ add_custom_target(nodeos_interop_dotnet ALL
 #  the dotnet filename
 # e.g.:
 # add_dotnet_test(FooTests.cs)
-function(add_dotnet_test FILE_NAME)
+#[[function(add_dotnet_test FILE_NAME)
   message(STATUS "Configuring test ${FILE_NAME} ...")
   get_filename_component(TEST_NAME ${FILE_NAME} NAME_WE)
   get_filename_component(COMPONENT_DIR ${FILE_NAME} DIRECTORY)
@@ -242,8 +260,9 @@ function(add_dotnet_test FILE_NAME)
       WORKING_DIRECTORY ${DOTNET_TEST_DIR})
   endif()
   message(STATUS "Configuring test ${FILE_NAME} done")
-endfunction()
+endfunction()]]
 
+# TOOD Examples
 ####################
 ##  .Net Example  ##
 ####################
@@ -253,7 +272,7 @@ endfunction()
 #  the dotnet filename
 # e.g.:
 # add_dotnet_example(Foo.cs)
-function(add_dotnet_example FILE_NAME)
+#[[function(add_dotnet_example FILE_NAME)
   message(STATUS "Configuring example ${FILE_NAME} ...")
   get_filename_component(EXAMPLE_NAME ${FILE_NAME} NAME_WE)
   get_filename_component(COMPONENT_DIR ${FILE_NAME} DIRECTORY)
@@ -313,4 +332,4 @@ function(add_dotnet_example FILE_NAME)
     endif()
   endif()
   message(STATUS "Configuring example ${FILE_NAME} done")
-endfunction()
+endfunction()]]

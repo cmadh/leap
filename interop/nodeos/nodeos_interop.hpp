@@ -1,0 +1,12 @@
+#ifndef LEAP_NODEOS_INTEROP_H
+#define LEAP_NODEOS_INTEROP_H
+
+#include "deep_mind_interop_handler.hpp"
+
+class NodeosInterop {
+public:
+    void StartNodeos(int argc, std::vector<std::string> args, interop_logger_base *interop_logger);
+    int Start(int argc, std::vector<std::string> argv, interop_logger_base *interop_logger);
+};
+
+#endif //LEAP_NODEOS_INTEROP_H
