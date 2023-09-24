@@ -5,8 +5,8 @@
 
 class NodeosInterop {
 public:
-    void StartNodeos(int argc, std::vector<std::string> args, interop_logger_base *interop_logger);
-    int Start(int argc, std::vector<std::string> argv, interop_logger_base *interop_logger);
+    void StartNodeos(std::vector<std::string> args, interop_logger_base *interop_logger);
+    int Start(std::vector<std::string> argv, interop_logger_base *interop_logger);
 };
 
 #endif //LEAP_NODEOS_INTEROP_H

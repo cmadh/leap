@@ -155,6 +155,32 @@ add_custom_target(dotnet_native_package
     ${DOTNET_NATIVE_PROJECT_DIR}/timestamp
   WORKING_DIRECTORY ${DOTNET_NATIVE_PROJECT_DIR})
 
+############################
+##  Reflectors  ##
+############################
+
+#set(INTEROP_SCRIPTS_DIR "${CMAKE_CURRENT_BINARY_DIR}/scripts")
+#set(FIND_REFLECTORS_SCRIPT_NAME "find_reflectors.py")
+#set(PROCESS_REFLECTORS_SCRIPT_NAME "process_reflector_files.py")
+#
+#message("FindReflectors Command: python ${INTEROP_SCRIPTS_DIR}/${FIND_REFLECTORS_SCRIPT_NAME} ${CMAKE_SOURCE_DIR} ${INTEROP_SCRIPTS_DIR}/reflectors" "--exclude_paths=''")
+#message("ProcessReflectors Command: python ${INTEROP_SCRIPTS_DIR}/${PROCESS_REFLECTORS_SCRIPT_NAME} ${INTEROP_SCRIPTS_DIR}/reflectors")
+#
+#add_custom_command(
+#        TARGET dotnet_native_package
+#        POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E make_directory "${INTEROP_SCRIPTS_DIR}/reflectors"
+#        COMMAND python "${INTEROP_SCRIPTS_DIR}/${FIND_REFLECTORS_SCRIPT_NAME}" "${CMAKE_SOURCE_DIR}" "${INTEROP_SCRIPTS_DIR}/reflectors" "--exclude_paths=''"
+#        COMMENT "Führt Python-Skript nach dem Build von IhrTarget aus."
+#)
+#
+#add_custom_command(
+#        TARGET dotnet_native_package
+#        POST_BUILD
+#        COMMAND python "${INTEROP_SCRIPTS_DIR}/${PROCESS_REFLECTORS_SCRIPT_NAME}" "${INTEROP_SCRIPTS_DIR}/reflectors"
+#        COMMENT "Führt Python-Skript nach dem Build von IhrTarget aus."
+#)
+
 ####################
 ##  .Net Package  ##
 ####################

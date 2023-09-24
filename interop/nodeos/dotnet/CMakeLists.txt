@@ -9,7 +9,7 @@ swig_add_library(${NODEOS_INTEROP_DOTNET_LIBRARY_NAME}
         TYPE OBJECT
         LANGUAGE csharp
         OUTPUT_DIR ${DOTNET_PROJECT_DIR}/${NODEOS_INTEROP_DOTNET_LIBRARY_NAME}
-        SOURCES nodeos_interop.i interop_logger_base.i)
+        SOURCES nodeos_interop.i)# interop_logger_base.i)
 
 set_target_properties(${NODEOS_INTEROP_DOTNET_LIBRARY_NAME} PROPERTIES
         SWIG_INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR};${PROJECT_SOURCE_DIR}/nodeos;${PROJECT_SOURCE_DIR}/nodeos/dotnet"

@@ -1,3 +1,5 @@
+#ifndef LEAP_INTEROP_LOGGER_BASE_H
+#define LEAP_INTEROP_LOGGER_BASE_H
 #include <string>
 
 struct interop_data_wrapper{
@@ -137,3 +139,5 @@ public:
         //ilog("on_remove_permission");
     }
 };
+
+#endif //LEAP_INTEROP_LOGGER_BASE_H

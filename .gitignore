@@ -54,6 +54,8 @@ programs/keosd/keosd
 programs/nodeos/config.hpp
 programs/nodeos/nodeos
 
+interop/scripts/fcreflectors/output
+
 scripts/tn_init.sh
 
 tests/plugin_test
@@ -91,9 +93,4 @@ CMakeLists.txt.user
 node_modules
 package-lock.json
 
-<<<<<<< HEAD
-cmake-build-debug-wsl-clang/*
-cmake-build-release-wsl-clang/*
-=======
 snapshots
->>>>>>> main

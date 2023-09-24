@@ -112,7 +112,7 @@ enum return_codes {
     NODE_MANAGEMENT_SUCCESS = 5
 };
 
-void NodeosInterop::StartNodeos(int argc, std::vector<std::string> args, interop_logger_base *interop_logger){
+void NodeosInterop::StartNodeos(std::vector<std::string> args, interop_logger_base *interop_logger){
     try {
         pthread_setname_np(pthread_self(), "nodeos-thread");
         ilog("ARGS:");
@@ -208,9 +208,9 @@ void NodeosInterop::StartNodeos(int argc, std::vector<std::string> args, interop
     }
 }
 
-int NodeosInterop::Start(int argc, std::vector<std::string> args, interop_logger_base *interop_logger)
+int NodeosInterop::Start(std::vector<std::string> args, interop_logger_base *interop_logger)
 {
-    std::thread thread_object(&NodeosInterop::StartNodeos, this, argc, args, interop_logger);
+    std::thread thread_object(&NodeosInterop::StartNodeos, this, args, interop_logger);
 //    int i = ret.get();
 //    if(i != 0)
 //        return i;

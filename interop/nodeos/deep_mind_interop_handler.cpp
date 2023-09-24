@@ -202,14 +202,14 @@ namespace eosio::chain {
     }
     void deep_mind_interop_handler::on_require_recipient()
     {
-            _interop_logger->on_require_recipient(_action_id);
+        _interop_logger->on_require_recipient(_action_id);
         /*fc_dlog(_logger, "CREATION_OP NOTIFY ${action_id}",
                 ("action_id", _action_id)
         );*/
     }
     void deep_mind_interop_handler::on_send_inline()
     {
-            _interop_logger->on_send_inline(_action_id);
+        _interop_logger->on_send_inline(_action_id);
         /*fc_dlog(_logger, "CREATION_OP INLINE ${action_id}",
                 ("action_id", _action_id)
         );*/

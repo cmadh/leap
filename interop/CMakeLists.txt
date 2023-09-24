@@ -100,7 +100,7 @@ endif()
 include(python)
 
 # TODO Tests and Examples
-#add_subdirectory(tests)
+add_subdirectory(scripts)
 
 #option(BUILD_EXAMPLES "Build examples" ON)
 #message(STATUS "Build examples: ${BUILD_EXAMPLES}")
