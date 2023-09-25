@@ -107,6 +107,7 @@ list(APPEND CMAKE_SWIG_FLAGS ${FLAGS} "-I${PROJECT_SOURCE_DIR}")
 add_subdirectory(nodeos/dotnet)
 target_link_libraries(io-liquiid-nodeos_interop-native PRIVATE ${NODEOS_INTEROP_DOTNET_LIBRARY_NAME})
 #endforeach()
+target_link_options(io-liquiid-nodeos_interop-native PRIVATE -v)
 
 file(COPY ${PROJECT_SOURCE_DIR}/nodeos/dotnet/logo.png DESTINATION ${PROJECT_BINARY_DIR}/dotnet)
 set(DOTNET_LOGO_DIR "${PROJECT_BINARY_DIR}/nodeos/dotnet")

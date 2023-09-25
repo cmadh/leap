@@ -1,5 +1,5 @@
 add_library(${NODEOS_INTEROP_LIBRARY_NAME}
-        SHARED
+        STATIC
         nodeos_interop.cpp deep_mind_interop_handler.cpp
         )
 
@@ -57,8 +57,8 @@ target_link_libraries( ${NODEOS_INTEROP_LIBRARY_NAME}
         PRIVATE -Wl,${whole_archive_flag} db_size_api_plugin         -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} producer_api_plugin        -Wl,${no_whole_archive_flag}
         #PRIVATE -Wl,${whole_archive_flag} resource_monitor_plugin    -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} test_control_plugin        -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} test_control_api_plugin    -Wl,${no_whole_archive_flag}
+        #PRIVATE -Wl,${whole_archive_flag} test_control_plugin        -Wl,${no_whole_archive_flag}
+        #PRIVATE -Wl,${whole_archive_flag} test_control_api_plugin    -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${build_id_flag}
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin eosio_chain
         PRIVATE eosio_chain_wrap fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS}

@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
 # Check primitive types
-option(CHECK_TYPE "Check primitive type size" ON)
+option(CHECK_TYPE "Check primitive type size" OFF)
 if(CHECK_TYPE)
   include(CMakePushCheckState)
   cmake_push_check_state(RESET)

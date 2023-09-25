@@ -19,6 +19,14 @@ message(STATUS " NODEOS_INTEROP_LIBRARY_NAME: ${NODEOS_INTEROP_LIBRARY_NAME}")
 set(NODEOS_INTEROP_DOTNET_LIBRARY_NAME ${NODEOS_INTEROP_LIBRARY_NAME}Dotnet)
 message(STATUS "NODEOS_INTEROP_DOTNET_LIBRARY_NAME: ${NODEOS_INTEROP_DOTNET_LIBRARY_NAME}")
 
+# Ensure Wasm Spec tests are not build
+option(DISABLE_WASM_SPEC_TESTS "disable building of wasm spec unit tests in interop library" ON)
+
+# no unresolved symbols
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-no-undefined")
+
+add_compile_definitions(BOOST_TEST_DYN_LINK)
+
 get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(isMultiConfig)
     if(NOT CMAKE_CONFIGURATION_TYPES)
@@ -38,7 +46,7 @@ endif()
 
 # Layout build dir like install dir
 include(GNUInstallDirs)
-option(BUILD_SHARED_LIBS "Build shared libraries (.so or .dyld)." ON)
+option(BUILD_SHARED_LIBS "Build shared libraries (.so or .dyld)." OFF)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})

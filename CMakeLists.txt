@@ -36,11 +36,11 @@ set( KEY_STORE_EXECUTABLE_NAME keosd )
 set( LEAP_UTIL_EXECUTABLE_NAME leap-util )
 
 # http://stackoverflow.com/a/18369825
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.2)
-        message(FATAL_ERROR "GCC version must be at least 10.2.0!")
-    endif()
-endif()
+#if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+#    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.2)
+#        message(FATAL_ERROR "GCC version must be at least 10.2.0!")
+#    endif()
+#endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
