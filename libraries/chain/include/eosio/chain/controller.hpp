@@ -38,7 +38,7 @@ namespace eosio { namespace chain {
    class global_property_object;
    class permission_object;
    class account_object;
-   class deep_mind_handler;
+   class deep_mind_handler_base;
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
    using forked_branch_callback = std::function<void(const branch_type&)>;
@@ -311,8 +311,8 @@ namespace eosio { namespace chain {
          void add_to_ram_correction( account_name account, uint64_t ram_bytes );
          bool all_subjective_mitigations_disabled()const;
 
-         deep_mind_handler* get_deep_mind_logger(bool is_trx_transient) const;
-         void enable_deep_mind( deep_mind_handler* logger );
+         deep_mind_handler_base* get_deep_mind_logger(bool is_trx_transient) const;
+         void enable_deep_mind( deep_mind_handler_base* logger );
          uint32_t earliest_available_block_num() const;
 
 #if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
