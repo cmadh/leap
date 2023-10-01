@@ -24,6 +24,7 @@ else()
     set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 endif()
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Options
 option(ENABLE_WERROR "Enable `-Werror` compilation flag." Off)
@@ -106,7 +107,7 @@ else()
 endif()
 
 set(Boost_USE_MULTITHREADED      ON)
-set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
+set( Boost_USE_STATIC_LIBS OFF CACHE STRING "ON or OFF" )
 # Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
 # the pthread dependency through fc.
 find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework system)
@@ -197,6 +198,7 @@ add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
 add_subdirectory( benchmark )
+add_subdirectory( interop)
 
 option(DISABLE_WASM_SPEC_TESTS "disable building of wasm spec unit tests" OFF)
 

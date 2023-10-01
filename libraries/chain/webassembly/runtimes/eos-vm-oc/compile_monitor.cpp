@@ -275,7 +275,116 @@ void launch_compile_monitor(int nodeos_fd) {
    _exit(0);
 }
 
+//#ifdef ENABLE_OC_CLIENT_SERVER_COMPILE_MONITOR_TRAMPOLINE
+//
+//struct compile_monitor_trampoline {
+//    void start_server(const char* SOCKET_PATH) {
+//        struct sockaddr_un addr;
+//
+//        compile_manager_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+//        FC_ASSERT(compile_manager_fd != -1, "Compile-Monitor Server wasn't able to create socket");
+//
+//        memset(&addr, 0, sizeof(addr));
+//        addr.sun_family = AF_UNIX;
+//        strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+//
+//        FC_ASSERT(bind(compile_manager_fd, (struct sockaddr*)&addr, sizeof(addr)) != -1, "Compile-Monitor Server wasn't able to bind socket");
+//
+//        FC_ASSERT(listen(compile_manager_fd, 5) != -1, "Compile-Monitor Server unable to listen socket");
+//
+//        int client_fd;
+//        FC_ASSERT((client_fd = accept(compile_manager_fd, NULL, NULL)) != -1, "Compile-Monitor Server wasn't able to accept connection");
+//
+//        // Hier können Sie mit client_fd kommunizieren
+//        launch_compile_monitor(client_fd);
+//
+//        close(client_fd);
+//        close(compile_manager_fd);
+//    }
+//
+//    void start_client(const char* SOCKET_PATH) {
+//        struct sockaddr_un addr;
+//
+//        compile_manager_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+//        FC_ASSERT(compile_manager_fd != -1, "Compile-Monitor-Client unable to create Socket");
+//
+//        memset(&addr, 0, sizeof(addr));
+//        addr.sun_family = AF_UNIX;
+//        strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+//
+//        FC_ASSERT(connect(compile_manager_fd, (struct sockaddr*)&addr, sizeof(addr)) != -1, "Compile-Monitor Client wasn't able to connect to Compile-Monitor Server");
+//
+//        // this actually the pid of the client, not the server.
+//        // It's set just for compatibility with other code
+//        compile_manager_pid = getpid();
+//
+//        // Hier können Sie mit compile_manager_fd kommunizieren
+//        // ...
+//        //close(compile_manager_fd);
+//    }
+//    int compile_manager_fd = -1;
+//    pid_t compile_manager_pid = -1;
+//};
+//#else
+
 struct compile_monitor_trampoline {
+    void start_server(const char* SOCKET_PATH) {
+        struct sockaddr_un addr;
+
+        std::cout << "compile_monitor_trampoline Server Starting" << std::endl;
+
+        compile_manager_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+        FC_ASSERT(compile_manager_fd != -1, "Compile-Monitor Server wasn't able to create socket");
+
+        memset(&addr, 0, sizeof(addr));
+        addr.sun_family = AF_UNIX;
+        strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+
+        FC_ASSERT(bind(compile_manager_fd, (struct sockaddr*)&addr, sizeof(addr)) != -1, "Compile-Monitor Server wasn't able to bind socket");
+
+        FC_ASSERT(listen(compile_manager_fd, 5) != -1, "Compile-Monitor Server unable to listen socket");
+
+        int client_fd;
+        FC_ASSERT((client_fd = accept(compile_manager_fd, NULL, NULL)) != -1, "Compile-Monitor Server wasn't able to accept connection");
+
+        std::cout << "compile_monitor_trampoline Server Started" << std::endl;
+
+        // Hier können Sie mit client_fd kommunizieren
+        launch_compile_monitor(client_fd);
+
+        std::cout << "launch_compile_monitor done" << std::endl;
+
+        close(client_fd);
+        //close(compile_manager_fd);
+    }
+
+    void start_client(const char* SOCKET_PATH) {
+        sleep(5);
+
+        std::cout << "compile_monitor_trampoline Client Starting" << std::endl;
+
+        struct sockaddr_un addr;
+
+        compile_manager_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+        FC_ASSERT(compile_manager_fd != -1, "Compile-Monitor-Client unable to create Socket");
+
+        memset(&addr, 0, sizeof(addr));
+        addr.sun_family = AF_UNIX;
+        strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+
+        FC_ASSERT(connect(compile_manager_fd, (struct sockaddr*)&addr, sizeof(addr)) != -1, "Compile-Monitor Client wasn't able to connect to Compile-Monitor Server");
+
+        // this actually the pid of the client, not the server.
+        // It's set just for compatibility with other code
+        compile_manager_pid = getpid();
+
+        std::cout << "compile_monitor_trampoline Client Started" << std::endl;
+
+        // Hier können Sie mit compile_manager_fd kommunizieren
+        // ...
+        //close(compile_manager_fd);
+    }
+
    void start() {
       //create communication socket; let's hold off on asio usage until all forks are done
       int socks[2];
@@ -293,15 +402,23 @@ struct compile_monitor_trampoline {
    pid_t compile_manager_pid = -1;
    int compile_manager_fd = -1;
 };
-
+//#endif
 static compile_monitor_trampoline the_compile_monitor_trampoline;
-extern "C" int __real_main(int, char*[]);
-extern "C" int __wrap_main(int argc, char* argv[]) {
 
-
-   the_compile_monitor_trampoline.start();
-   return __real_main(argc, argv);
+extern "C" __attribute__((visibility("default"))) void start_compile_monitor_trampoline_server(const char* SOCKET_PATH) {
+    the_compile_monitor_trampoline.start_server(SOCKET_PATH);
 }
+
+extern "C" __attribute__((visibility("default"))) void start_compile_monitor_trampoline_client(const char* SOCKET_PATH) {
+    the_compile_monitor_trampoline.start_client(SOCKET_PATH);
+}
+//extern "C" int __real_main(int, char*[]);
+//extern "C" int __wrap_main(int argc, char* argv[]) {
+//
+//
+//   the_compile_monitor_trampoline.start();
+//   return __real_main(argc, argv);
+//}
 
 wrapped_fd get_connection_to_compile_monitor(int cache_fd) {
    FC_ASSERT(the_compile_monitor_trampoline.compile_manager_pid >= 0, "EOS VM oop connection doesn't look active");

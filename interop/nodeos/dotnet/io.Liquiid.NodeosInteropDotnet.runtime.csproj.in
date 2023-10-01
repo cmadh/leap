@@ -31,5 +31,17 @@
       <Pack>true</Pack>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="
+      $<TARGET_FILE:@NODEOS_INTEROP_EXECUTABLE_NAME@>
+    ">
+      <PackagePath>runtimes/@RUNTIME_IDENTIFIER@/native/%(Filename)%(Extension)</PackagePath>
+      <Pack>true</Pack>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
+
+  <ItemGroup>
+      <None Include="@DOTNET_NATIVE_PROJECT_DIR@/io.Liquiid.NodeosInteropExecutable.targets" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
 </Project>

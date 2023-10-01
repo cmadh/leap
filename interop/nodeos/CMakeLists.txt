@@ -9,6 +9,13 @@ if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
+option(ENABLE_OC_CLIENT_SERVER_COMPILE_MONITOR_TRAMPOLINE "enable alternative client server oc compile monitor" ON)
+
+if(ENABLE_OC_CLIENT_SERVER_COMPILE_MONITOR_TRAMPOLINE)
+  message("alternative client server oc compile monitor enabled")
+  add_definitions(-DENABLE_OC_CLIENT_SERVER_COMPILE_MONITOR_TRAMPOLINE=1)
+endif()
+
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
   find_package(Git)
   if(GIT_FOUND)

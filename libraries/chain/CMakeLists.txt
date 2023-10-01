@@ -136,12 +136,14 @@ target_include_directories( eosio_chain
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                             )
 
+add_definitions(-DENABLE_OC_CLIENT_SERVER_COMPILE_MONITOR_TRAMPOLINE=1)
+
 add_library(eosio_chain_wrap INTERFACE )
 target_link_libraries(eosio_chain_wrap INTERFACE eosio_chain)
 
-if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
-   target_link_libraries(eosio_chain_wrap INTERFACE "-Wl,-wrap=main")
-endif()
+#if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES AND NOT DEFINED ENABLE_OC_CLIENT_SERVER_COMPILE_MONITOR_TRAMPOLINE)
+#   target_link_libraries(eosio_chain_wrap INTERFACE "-Wl,-wrap=main")
+#endif()
 
 foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
    string(TOUPPER "${RUNTIME}" RUNTIMEUC)

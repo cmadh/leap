@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <LangVersion>11.0</LangVersion>
+    <TargetFrameworks>netcoreapp3.1;net7.0</TargetFrameworks>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>io.Liquiid.NodeosInteropDotnet</AssemblyName>
+    <Version>1.0</Version>
+
+    <!-- Nuget Properties -->
+    <Description>.NET wrapper for the NodeosInterop project</Description>
+
+    <!-- Pack Option -->
+    <Title>io.Liquiid.NodeosInteropDotnet v1.0</Title>
+    <PackageId>io.Liquiid.NodeosInteropDotnet</PackageId>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Signing -->
+    <SignAssembly>false</SignAssembly>
+    <PublicSign>false</PublicSign>
+    <DelaySign>false</DelaySign>
+  </PropertyGroup>
+
+  <!-- Validate at least one runtime package has been generated -->
+  <Target Name="ValidateRuntimePack" BeforeTargets="GenerateNuspec">
+    <ItemGroup>
+      <RuntimeLinux Include="/mnt/e/source/repos/leap-experiments/cmadhLeap2/cmake-build-debug-wsl-gcc/interop/dotnet/packages/io.Liquiid.NodeosInteropDotnet.runtime.linux-x64.*.nupkg"/>
+      <!-- <RuntimeOsx Include="/mnt/e/source/repos/leap-experiments/cmadhLeap2/cmake-build-debug-wsl-gcc/interop/dotnet/packages/io.Liquiid.NodeosInteropDotnet.runtime.osx-x64.*.nupkg"/> -->
+      <!-- <RuntimeWin Include="/mnt/e/source/repos/leap-experiments/cmadhLeap2/cmake-build-debug-wsl-gcc/interop/dotnet/packages/io.Liquiid.NodeosInteropDotnet.runtime.win-x64.*.nupkg"/> -->
+    </ItemGroup>
+    <Message Importance="high" Text="Package io.Liquiid.NodeosInteropDotnet.runtime.linux-x64: found" Condition="Exists('@(RuntimeLinux)')"/>
+    <Message Importance="high" Text="-------  $(OS)  "/>
+    <Message Importance="high" Text="Package io.Liquiid.NodeosInteropDotnet.runtime.linux-x64: not found" Condition="!Exists('@(RuntimeLinux)')"/>
+    <!-- <Message Importance="high" Text="Package io.Liquiid.NodeosInteropDotnet.runtime.osx-x64: found" Condition="Exists('@(RuntimeOsx)')"/> -->
+    <!-- <Message Importance="high" Text="Package io.Liquiid.NodeosInteropDotnet.runtime.osx-x64: not found" Condition="!Exists('@(RuntimeOsx)')"/> -->
+    <!-- <Message Importance="high" Text="Package io.Liquiid.NodeosInteropDotnet.runtime.win-x64: found" Condition="Exists('@(RuntimeWin)')"/> -->
+    <!-- <Message Importance="high" Text="Package io.Liquiid.NodeosInteropDotnet.runtime.win-x64: not found" Condition="!Exists('@(RuntimeWin)')"/> -->
+    <!-- <Error Text="You must locally 'dotnet pack' at least one io.Liquiid.NodeosInteropDotnet.runtime.{rid} Project." Condition="!Exists('@(RuntimeLinux)') AND !Exists('@(RuntimeOsx)') AND !Exists('@(RuntimeWin)')"/> -->
+    <Error Text="You must locally 'dotnet pack' at least one io.Liquiid.NodeosInteropDotnet.runtime.{rid} Project." Condition="!Exists('@(RuntimeLinux)')"/>
+  </Target>
+
+  <!-- Need to add required runtime dependencies so Meta-Project will pull runtime Nuget(s) -->
+  <PropertyGroup>
+    <RestoreSources>/mnt/e/source/repos/leap-experiments/cmadhLeap2/cmake-build-debug-wsl-gcc/interop/dotnet/packages;$(RestoreSources);https://api.nuget.org/v3/index.json</RestoreSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeLinux Include="/mnt/e/source/repos/leap-experiments/cmadhLeap2/cmake-build-debug-wsl-gcc/interop/dotnet/packages/io.Liquiid.NodeosInteropDotnet.runtime.linux-x64.*.nupkg"/>
+    <!-- <RuntimeOsx Include="/mnt/e/source/repos/leap-experiments/cmadhLeap2/cmake-build-debug-wsl-gcc/interop/dotnet/packages/io.Liquiid.NodeosInteropDotnet.runtime.osx-x64.*.nupkg"/> -->
+    <!-- <RuntimeWin Include="/mnt/e/source/repos/leap-experiments/cmadhLeap2/cmake-build-debug-wsl-gcc/interop/dotnet/packages/io.Liquiid.NodeosInteropDotnet.runtime.win-x64.*.nupkg"/> -->
+    <PackageReference Include="io.Liquiid.NodeosInteropDotnet.runtime.linux-x64" Version="1.0" Condition="Exists('@(RuntimeLinux)')"/>
+    <!-- <PackageReference Include="io.Liquiid.NodeosInteropDotnet.runtime.osx-x64"   Version="1.0" Condition="Exists('@(RuntimeOsx)')"  /> -->
+    <!-- <PackageReference Include="io.Liquiid.NodeosInteropDotnet.runtime.win-x64"   Version="1.0" Condition="Exists('@(RuntimeWin)')"  /> -->
+  </ItemGroup>
+
+  <Target Name="SetFilePermissions" AfterTargets="Build">
+      <Message Text="Setting file permissions for: $(MSBuildThisFileDirectory)../runtimes/linux-x64/native/nodeosInteropExecutable/$(NODEOS_INTEROP_EXECUTABLE_NAME)" Importance="high"/>
+      <Exec Command="chmod +x $(MSBuildThisFileDirectory)../runtimes/linux-x64/native/nodeosInteropExecutable/$(NODEOS_INTEROP_EXECUTABLE_NAME)" />
+  </Target>
+</Project>
+

@@ -54,5 +54,10 @@
     <!-- <PackageReference Include="@DOTNET_PROJECT@.runtime.osx-x64"   Version="@PROJECT_VERSION@" Condition="Exists('@(RuntimeOsx)')"  /> -->
     <!-- <PackageReference Include="@DOTNET_PROJECT@.runtime.win-x64"   Version="@PROJECT_VERSION@" Condition="Exists('@(RuntimeWin)')"  /> -->
   </ItemGroup>
+
+  <Target Name="SetFilePermissions" AfterTargets="Build">
+      <Message Text="Setting file permissions for: $(MSBuildThisFileDirectory)../runtimes/linux-x64/native/nodeosInteropExecutable/$(NODEOS_INTEROP_EXECUTABLE_NAME)" Importance="high"/>
+      <Exec Command="chmod +x $(MSBuildThisFileDirectory)../runtimes/linux-x64/native/nodeosInteropExecutable/$(NODEOS_INTEROP_EXECUTABLE_NAME)" />
+  </Target>
 </Project>
 
