@@ -1,5 +1,0 @@
-import os
-
-sys_core_symbol = os.environ.get('CORE_SYMBOL_NAME')
-
-CORE_SYMBOL=sys_core_symbol if sys_core_symbol else 'SYS'

@@ -1,6 +1,0 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <Target Name="SetFilePermissions" AfterTargets="Build">
-        <Message Text="Setting file permissions for: $(MSBuildThisFileDirectory)../runtimes/linux-x64/native/nodeosInteropExecutable/$(NODEOS_INTEROP_EXECUTABLE_NAME)" Importance="high"/>
-        <Exec Command="chmod +x $(MSBuildThisFileDirectory)../runtimes/linux-x64/native/nodeosInteropExecutable/$(NODEOS_INTEROP_EXECUTABLE_NAME)" />
-    </Target>
-</Project>
